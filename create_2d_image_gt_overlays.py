@@ -27,7 +27,7 @@ def main():
         subset_images = os.listdir(os.path.join(train_dir, subset, "images")) if os.path.exists(os.path.join(train_dir, subset, "images")) else []
         subset_labels = os.listdir(os.path.join(train_dir, subset, "labels"))
         try:
-            assert len(subset_images) == len(subset_labels), f"Number of images {len(subset_images)}!= number of labels {len(subset_labels)} for subset {subset}"
+            assert len(subset_images) == len(subset_labels), f"Number of images {len(subset_images)} != number of labels {len(subset_labels)} for subset {subset}"
             print(f"train {subset}: images {len(subset_images)}, labels {len(subset_labels)}")
             if len(subset_images) > 0:
                 output_dir = os.path.join(args.output_path, "train", subset)

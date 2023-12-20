@@ -38,7 +38,7 @@ def main():
                 label_png_output_dir = os.path.join(args.output_path, "train", subset, "labels_png")
                 os.makedirs(label_png_output_dir, exist_ok=True)
                 cv2.imwrite(os.path.join(label_png_output_dir, label_filepath[:-3] + "png"), label)
-                label_npy_output_dir = os.path.join(args.output_path, "train", subset, "labels_png")
+                label_npy_output_dir = os.path.join(args.output_path, "train", subset, "labels_npy")
                 os.makedirs(label_npy_output_dir, exist_ok=True)
                 label_gt_indexes = label == 255
                 label_npy = np.zeros_like(label)
