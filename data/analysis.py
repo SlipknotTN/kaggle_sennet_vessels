@@ -5,9 +5,13 @@ from collections import defaultdict
 
 
 def do_parsing():
-    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                                     description="Analyze dataset")
-    parser.add_argument("--dataset_path", required=True, type=str, help="Dataset root dir")
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Analyze dataset",
+    )
+    parser.add_argument(
+        "--dataset_path", required=True, type=str, help="Dataset root dir"
+    )
     args = parser.parse_args()
     return args
 
@@ -21,9 +25,15 @@ def main():
 
     print("File system")
     for subset in os.listdir(train_dir):
-        subset_images = os.listdir(os.path.join(train_dir, subset, "images")) if os.path.exists(os.path.join(train_dir, subset, "images")) else []
+        subset_images = (
+            os.listdir(os.path.join(train_dir, subset, "images"))
+            if os.path.exists(os.path.join(train_dir, subset, "images"))
+            else []
+        )
         subset_labels = os.listdir(os.path.join(train_dir, subset, "labels"))
-        print(f"train {subset}: images {len(subset_images)}, labels {len(subset_labels)}")
+        print(
+            f"train {subset}: images {len(subset_images)}, labels {len(subset_labels)}"
+        )
 
     csv_data_dict = defaultdict(list)
     with open(os.path.join(args.dataset_path, "train_rles.csv"), "r") as train_fp:
