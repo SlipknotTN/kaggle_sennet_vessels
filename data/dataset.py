@@ -13,7 +13,9 @@ class BloodVesselDataset(Dataset):
         self.dataset_with_gt = dataset_with_gt
         self.samples = []
         for selected_dir in selected_dirs:
-            images_filepaths = sorted(os.listdir(os.path.join(selected_dir, "images")))
+            images_dir = os.path.join(selected_dir, "images")
+            assert os.path.exists(images_dir), f"{images_dir} does not exist"
+            images_filepaths = sorted(os.listdir(images_dir))
             assert len(images_filepaths) > 0
             labels_filepaths = []
             if dataset_with_gt:
@@ -49,7 +51,7 @@ class BloodVesselDataset(Dataset):
         image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
         image = np.expand_dims(image, axis=-1)
 
-        if self.dataset_with_gt:
+        if sample[1]:
             label_path = sample[1]
             label = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
             label = np.expand_dims(label, axis=-1)

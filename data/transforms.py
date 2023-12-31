@@ -35,5 +35,6 @@ def get_test_transform(config: ConfigParams):
             A.Resize(config.model_input_size, config.model_input_size),
             A.ToFloat(max_value=255),
             ToTensorV2(),
-        ]
+        ],
+        additional_targets={"label": "image"},
     )

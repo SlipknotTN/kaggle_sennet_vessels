@@ -74,13 +74,14 @@ def main():
         len(test_dataset) % batch_size > 0
     )
 
+    os.makedirs(args.output_dir, exist_ok=True)
+
     # Iterate on test batches
     for batch_id, data in tqdm(
         enumerate(test_dataloader), desc="batch", total=test_batches
     ):
         # get the input images and labels
         images = data["image"]
-        # FIXME: labels shape is not correct
         labels = data["label"] if "label" in data else None
         image_paths = data["file"]
         # print(f"Images shape: {images.shape}, labels shape: {labels.shape}")
@@ -92,28 +93,38 @@ def main():
         outputs = model(images)
 
         for i in range(batch_size):
-            # TODO: Reshape / squeeze
             image_npy = images[i].cpu().data.numpy()
             image_path = image_paths[i]
             label_npy = labels[i].data.numpy() if labels is not None else None
             output_npy = outputs[i].cpu().data.numpy()
-            image_img = (image_npy * 255.0).astype(np.uint8)
-            label_img = (
-                (label_npy * 255.0).astype(np.uint8) if label_npy is not None else None
+            # numpy [0, 255], uint8, HWC (single channel)
+            image_img = np.transpose((image_npy * 255.0).astype(np.uint8), (1, 2, 0))
+            label_img = np.transpose(
+                (
+                    (label_npy * 255.0).astype(np.uint8)
+                    if label_npy is not None
+                    else None
+                ),
+                (1, 2, 0),
             )
-            output_img = (output_npy * 255.0).astype(np.uint8)
+            output_img = np.transpose((output_npy * 255.0).astype(np.uint8), (1, 2, 0))
 
             if label_img is not None:
                 all_in_one = cv2.hconcat([image_img, label_img, output_img])
             else:
                 all_in_one = cv2.hconcat([image_img, output_img])
             print(image_path)
-            cv2.imshow("All-In-One", all_in_one)
-            cv2.waitKey(0)
-
+            cv2.imwrite(
+                os.path.join(
+                    args.output_dir, os.path.basename(image_path)[:-4] + ".png"
+                ),
+                all_in_one,
+            )
             # TODO: Create another tile with label-output diff
-
             # TODO: Implement metrics
+
+        del images
+        del outputs
 
 
 if __name__ == "__main__":
