@@ -92,7 +92,7 @@ def main():
         # forward pass to get outputs
         outputs = model(images)
 
-        for i in range(batch_size):
+        for i in range(images.shape[0]):
             image_npy = images[i].cpu().data.numpy()
             image_path = image_paths[i]
             label_npy = labels[i].data.numpy() if labels is not None else None
