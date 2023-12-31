@@ -7,7 +7,7 @@ from collections import defaultdict
 def do_parsing():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="Analyze dataset",
+        description="Analyze dataset slices",
     )
     parser.add_argument(
         "--dataset_path", required=True, type=str, help="Dataset root dir"
@@ -44,7 +44,6 @@ def main():
             full_data_id_parts = full_data_id.split("_")
             subset_name = "_".join(full_data_id_parts[:-1])
             data_subset_id = int(full_data_id_parts[-1])
-            # TODO: decode rle
             csv_data_dict[subset_name].append(data_subset_id)
 
     print("CSV file")

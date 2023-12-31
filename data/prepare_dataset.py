@@ -1,3 +1,6 @@
+"""
+Not necessary to run the training
+"""
 import argparse
 import os
 

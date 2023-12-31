@@ -1,0 +1,77 @@
+import os
+
+import cv2
+import numpy as np
+from torch.utils.data import Dataset
+from tqdm import tqdm
+
+
+class BloodVesselDataset(Dataset):
+    def __init__(self, selected_dirs, transform, dataset_with_gt):
+        self.selected_dirs = selected_dirs
+        self.transform = transform
+        self.dataset_with_gt = dataset_with_gt
+        self.samples = []
+        for selected_dir in selected_dirs:
+            images_filepaths = sorted(os.listdir(os.path.join(selected_dir, "images")))
+            assert len(images_filepaths) > 0
+            labels_filepaths = []
+            if dataset_with_gt:
+                labels_dir = os.path.join(selected_dir, "labels")
+                assert os.path.exists(labels_dir), f"{labels_dir} does not exist"
+                labels_filepaths = os.listdir(os.path.join(selected_dir, "labels"))
+                assert len(images_filepaths) == len(labels_filepaths), (
+                    f"Number of images {len(images_filepaths)} != number of labels {len(labels_filepaths)} "
+                    f"for dir {selected_dir}"
+                )
+            print(
+                f"{selected_dir}: images {len(images_filepaths)}, labels {len(labels_filepaths)}"
+            )
+            for image_filepath in tqdm(images_filepaths, desc="image"):
+                full_image_filepath = os.path.join(
+                    selected_dir, "images", image_filepath
+                )
+                if self.dataset_with_gt:
+                    full_label_filepath = os.path.join(
+                        selected_dir, "labels", image_filepath
+                    )
+                else:
+                    full_label_filepath = None
+                self.samples.append([full_image_filepath, full_label_filepath])
+
+    def __len__(self):
+        return len(self.samples)
+
+    def __getitem__(self, idx):
+        sample = self.samples[idx]
+
+        image_path = sample[0]
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        image = np.expand_dims(image, axis=-1)
+
+        if self.dataset_with_gt:
+            label_path = sample[1]
+            label = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
+            label = np.expand_dims(label, axis=-1)
+            # Transform image
+            transformed = self.transform(image=image, label=label)
+            # print(transformed)
+            # label_shape = transformed["label"].shape
+            # print(f"Image shape {list(image.shape)}, label shape {list(label_shape)}")
+            return {
+                "image": transformed["image"],
+                "label": transformed["label"],
+                "file": image_path,
+                "shape": list(image.shape),
+            }
+
+        else:
+            # Transform image
+            transformed = self.transform(image=image)
+            # print(transformed)
+            # print(f"Image shape {list(image.shape)}")
+            return {
+                "image": transformed["image"],
+                "file": image_path,
+                "shape": list(image.shape),
+            }
