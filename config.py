@@ -14,6 +14,12 @@ class ConfigParams(object):
         )
         self.epochs = config.getint("TRAIN", "epochs")
         self.optimizer = config.get("TRAIN", "optimizer")
+        self.num_batches_train_loss_aggregation = config.getint(
+            "TRAIN", "num_batches_train_loss_aggregation"
+        )
+        self.num_batches_preds_visualization_period = config.getint(
+            "TRAIN", "num_batches_preds_visualization_period"
+        )
         if self.optimizer == "SGD":
             self.learning_rate = config.getfloat("SGD", "learning_rate")
             self.momentum = config.getfloat("SGD", "momentum")

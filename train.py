@@ -124,7 +124,7 @@ def main():
     best_epoch_1_index = 0
 
     for epoch_id in tqdm(range(config.epochs), desc="epoch"):
-        model.train()
+        model.train(True)
 
         train_total_loss = 0.0
         running_loss = 0.0
@@ -133,6 +133,7 @@ def main():
         for batch_id, data in tqdm(
             enumerate(train_dataloader), desc="batch", total=train_batches
         ):
+            global_step = epoch_id * train_batches + batch_id
             # get the input images and labels
             images = data["image"]
             labels = data["label"]
@@ -159,7 +160,10 @@ def main():
 
             # print loss statistics
             running_loss += loss.item()
-            if batch_id % 10 == 9:  # print every 10 batches
+            if (
+                batch_id % config.num_batches_train_loss_aggregation
+                == config.num_batches_train_loss_aggregation
+            ):
                 avg_sample_loss = running_loss / 10 / config.train_batch_size
                 print(
                     "Epoch: {}, Batch: {}, train last 10 batches avg. sample loss: {}".format(
@@ -172,14 +176,16 @@ def main():
                 writer.add_scalar(
                     "train/loss_10_batches_avg",
                     avg_sample_loss,
-                    global_step=epoch_id * train_batches + batch_id,
+                    global_step=global_step,
                 )
 
             train_total_loss += loss.item()
 
             # write predictions to tensorboard during training
-            if batch_id % 50 == 49:
-                global_step = epoch_id * train_batches + batch_id
+            if (
+                batch_id % config.num_batches_preds_visualization_period
+                == config.num_batches_preds_visualization_period - 1
+            ):
                 add_image_sample_to_tensorboard(
                     writer,
                     "train",
@@ -193,11 +199,12 @@ def main():
         print("Epoch: {}, Train avg. sample loss: {}".format(epoch_id + 1, train_loss))
 
         # Iterate on validation batches
+        model.eval()
         print(f"Epoch: {epoch_id + 1}, calculating validation loss...")
         with torch.no_grad():
-            model.eval()
             val_total_loss = 0.0
             for batch_id, data in tqdm(enumerate(val_dataloader), total=val_batches):
+                global_step = epoch_id * train_batches + batch_id
                 # get the input images and labels
                 images = data["image"]
                 labels = data["label"]
@@ -217,8 +224,10 @@ def main():
                 # TODO: Calculate dice metric
 
                 # write predictions to tensorboard during validation
-                if batch_id % 50 == 49:
-                    global_step = epoch_id * train_batches + batch_id
+                if (
+                    batch_id % config.num_batches_preds_visualization_period
+                    == config.num_batches_preds_visualization_period - 1
+                ):
                     add_image_sample_to_tensorboard(
                         writer,
                         "val",
@@ -254,6 +263,7 @@ def main():
             "train_loss": train_loss,
             "val_loss": val_loss,
         }
+        writer.flush()
 
     print(
         f"Train completed, best epoch {best_epoch_1_index} with val loss {best_val_loss}"
