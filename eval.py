@@ -123,6 +123,7 @@ def main():
             # TODO: Create another tile with label-output diff
             # TODO: Implement metrics
 
+        # Why is this necessary to avoid OOM?
         del images
         del outputs
 

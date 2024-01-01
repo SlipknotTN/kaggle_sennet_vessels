@@ -8,6 +8,7 @@ from collections import OrderedDict
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -16,6 +17,14 @@ from data.dataset import BloodVesselDataset
 from data.transforms import get_train_transform, get_val_transform
 from model import UnetModel
 from utils import get_device
+
+
+def add_image_sample_to_tensorboard(
+    writer, tag_prefix, global_step, image_sample, label_sample, pred_sample
+):
+    writer.add_image(f"{tag_prefix}/image", image_sample, global_step=global_step)
+    writer.add_image(f"{tag_prefix}/label", label_sample, global_step=global_step)
+    writer.add_image(f"{tag_prefix}/pred", pred_sample, global_step=global_step)
 
 
 def do_parsing():
@@ -89,6 +98,21 @@ def main():
     )
 
     # Train loop
+    os.makedirs(args.output_dir, exist_ok=True)
+    writer = SummaryWriter(logdir=args.output_dir)
+    writer.add_graph(
+        model,
+        torch.zeros(
+            [
+                config.train_batch_size,
+                1,
+                config.model_input_size,
+                config.model_input_size,
+            ],
+            dtype=torch.float32,
+            device=device,
+        ),
+    )
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.SGD(
         model.parameters(), lr=config.learning_rate, momentum=config.momentum
@@ -115,14 +139,14 @@ def main():
             # print(f"Images shape: {images.shape}, labels shape: {labels.shape}")
 
             # Move to GPU
-            labels = labels.to(device)
-            images = images.to(device)
+            labels_device = labels.to(device)
+            images_device = images.to(device)
 
             # forward pass to get outputs
-            output = model(images)
+            preds = model(images_device)
 
             # calculate the loss between predicted and output image
-            loss = criterion(output, labels)
+            loss = criterion(preds, labels_device)
 
             # zero the parameter (weight) gradients
             optimizer.zero_grad()
@@ -136,16 +160,34 @@ def main():
             # print loss statistics
             running_loss += loss.item()
             if batch_id % 10 == 9:  # print every 10 batches
+                avg_sample_loss = running_loss / 10 / config.train_batch_size
                 print(
                     "Epoch: {}, Batch: {}, train last 10 batches avg. sample loss: {}".format(
                         epoch_id + 1,
                         batch_id + 1,
-                        running_loss / 10 / config.train_batch_size,
+                        avg_sample_loss,
                     )
                 )
                 running_loss = 0.0
+                writer.add_scalar(
+                    "train/loss_10_batches_avg",
+                    avg_sample_loss,
+                    global_step=epoch_id * train_batches + batch_id,
+                )
 
             train_total_loss += loss.item()
+
+            # write predictions to tensorboard during training
+            if batch_id % 50 == 49:
+                global_step = epoch_id * train_batches + batch_id
+                add_image_sample_to_tensorboard(
+                    writer,
+                    "train",
+                    global_step,
+                    images[0],
+                    labels[0],
+                    nn.Sigmoid()(preds[0]),
+                )
 
         train_loss = train_total_loss / train_batches / config.train_batch_size
         print("Epoch: {}, Train avg. sample loss: {}".format(epoch_id + 1, train_loss))
@@ -155,38 +197,48 @@ def main():
         with torch.no_grad():
             model.eval()
             val_total_loss = 0.0
-            for batch_i, data in tqdm(enumerate(val_dataloader), total=val_batches):
+            for batch_id, data in tqdm(enumerate(val_dataloader), total=val_batches):
                 # get the input images and labels
                 images = data["image"]
                 labels = data["label"]
 
                 # Move to GPU
-                labels = labels.to(device)
-                images = images.to(device)
+                labels_device = labels.to(device)
+                images_device = images.to(device)
 
                 # forward pass to get outputs
-                output = model(images)
+                preds = model(images_device)
 
                 # calculate the loss between predicted and output image
-                loss = criterion(output, labels)
+                loss = criterion(preds, labels_device)
 
                 val_total_loss += loss.item()
 
                 # TODO: Calculate dice metric
 
-        # TODO: Visualize train and val predictions during training
+                # write predictions to tensorboard during validation
+                if batch_id % 50 == 49:
+                    global_step = epoch_id * train_batches + batch_id
+                    add_image_sample_to_tensorboard(
+                        writer,
+                        "val",
+                        global_step,
+                        images[0],
+                        labels[0],
+                        nn.Sigmoid()(preds[0]),
+                    )
 
         val_loss = val_total_loss / val_batches / config.train_batch_size
         print(
             "Epoch: {}, Validation avg. sample loss: {}".format(epoch_id + 1, val_loss)
         )
+        writer.add_scalar("val/loss_epoch_avg", val_loss, global_step=(epoch_id + 1))
         if val_loss < best_val_loss:
             print(
                 f"Epoch: {epoch_id + 1}, validation loss improvement from {best_val_loss} to {val_loss}"
             )
             best_val_loss = val_loss
             best_epoch_1_index = epoch_id + 1
-            os.makedirs(args.output_dir, exist_ok=True)
             output_model_filename = (
                 f"{args.output_dir}/{config.model_name}_{epoch_id + 1}.pt"
             )
@@ -210,6 +262,8 @@ def main():
     shutil.copy(args.config_path, os.path.join(args.output_dir, "config.cfg"))
     with open(os.path.join(args.output_dir, "training_metrics.json"), "w") as out_fp:
         json.dump(training_metrics, out_fp, indent=4)
+
+    writer.close()
 
 
 if __name__ == "__main__":
