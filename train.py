@@ -29,6 +29,7 @@ def iou_loss(output, target):
         )
         logit = 2 * intersection_mul / union_squared
         loss_component = -torch.log(logit)
+        # TODO: Investigate positive loss_component
         loss_components.append(loss_component)
     return torch.mean(torch.stack(loss_components))
 
@@ -263,6 +264,10 @@ def main():
                 val_total_loss += loss.item()
 
                 # TODO: Calculate dice metric
+
+                # TODO: Show more validation predictions
+
+                # TODO: Split the same kidney between train and val for better generalization understanding
 
                 # write predictions to tensorboard during validation
                 if (
