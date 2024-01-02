@@ -47,8 +47,10 @@ def main():
         slice_stats["mean_of_means"][slice] = np.mean(means)
         slice_stats["mean_of_std_devs"][slice] = np.mean(std_devs)
         slice_stats["num_images"][slice] = len(slice_images)
-        print(f"Slice {slice}: mean_of_means {slice_stats['mean_of_means'][slice]}, "
-              f"mean_of_std_devs {slice_stats['mean_of_std_devs'][slice]}")
+        print(
+            f"Slice {slice}: mean_of_means {slice_stats['mean_of_means'][slice]}, "
+            f"mean_of_std_devs {slice_stats['mean_of_std_devs'][slice]}"
+        )
 
     print(json.dumps(slice_stats, indent=4))
 
