@@ -24,7 +24,9 @@ def iou_loss(output, target):
     loss_components = []
     for batch_id in range(batch_size):
         intersection_mul = max(torch.sum(output[batch_id] * target[batch_id]), 1.0)
-        union_squared = torch.sum(output[batch_id] ** 2) + torch.sum(target[batch_id] ** 2)
+        union_squared = torch.sum(output[batch_id] ** 2) + torch.sum(
+            target[batch_id] ** 2
+        )
         logit = 2 * intersection_mul / union_squared
         loss_component = -torch.log(logit)
         loss_components.append(loss_component)
@@ -138,9 +140,7 @@ def main():
             model.parameters(), lr=config.learning_rate, momentum=config.momentum
         )
     elif config.optimizer == "ADAM":
-        optimizer = optim.Adam(
-            model.parameters(), lr=config.learning_rate
-        )
+        optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
     else:
         raise Exception("Missing optimizer")
 
@@ -229,7 +229,9 @@ def main():
 
         train_loss = train_total_loss / train_batches
         print("Epoch: {}, Train avg. sample loss: {}".format(epoch_id + 1, train_loss))
-        writer.add_scalar("train/loss_epoch_avg", train_loss, global_step=(epoch_id + 1))
+        writer.add_scalar(
+            "train/loss_epoch_avg", train_loss, global_step=(epoch_id + 1)
+        )
 
         # Iterate on validation batches
         model.eval()
