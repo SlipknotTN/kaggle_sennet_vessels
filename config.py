@@ -18,8 +18,11 @@ class ConfigParams(object):
         self.num_batches_train_loss_aggregation = config.getint(
             "TRAIN", "num_batches_train_loss_aggregation"
         )
-        self.num_batches_preds_visualization_period = config.getint(
-            "TRAIN", "num_batches_preds_visualization_period"
+        self.num_batches_preds_train_visualization_period = config.getint(
+            "TRAIN", "num_batches_preds_train_visualization_period"
+        )
+        self.num_batches_preds_val_visualization_period = config.getint(
+            "TRAIN", "num_batches_preds_val_visualization_period"
         )
         if self.optimizer == "SGD":
             self.learning_rate = config.getfloat("SGD", "learning_rate")

@@ -105,7 +105,8 @@ def main():
         len(train_dataset) % config.train_batch_size > 0
     )
     print(
-        f"Train dataset samples: {len(train_dataset)}, num_batches with batch size {config.train_batch_size}: {train_batches}"
+        f"Train dataset samples: {len(train_dataset)}, "
+        f"num_batches with batch size {config.train_batch_size}: {train_batches}"
     )
     val_dataloader = DataLoader(
         val_dataset, batch_size=config.train_batch_size, shuffle=False
@@ -114,7 +115,8 @@ def main():
         len(val_dataset) % config.train_batch_size > 0
     )
     print(
-        f"Validation dataset samples: {len(val_dataset)}, num_batches with batch size {config.train_batch_size}: {val_batches}"
+        f"Validation dataset samples: {len(val_dataset)}, "
+        f"num_batches with batch size {config.train_batch_size}: {val_batches}"
     )
 
     # Train loop
@@ -221,8 +223,8 @@ def main():
 
             # write predictions to tensorboard during training
             if (
-                batch_id % config.num_batches_preds_visualization_period
-                == config.num_batches_preds_visualization_period - 1
+                batch_id % config.num_batches_preds_train_visualization_period
+                == config.num_batches_preds_train_visualization_period - 1
             ):
                 add_image_sample_to_tensorboard(
                     writer,
@@ -270,14 +272,10 @@ def main():
 
                 # TODO: Calculate dice metric
 
-                # TODO: Show more validation predictions
-
-                # TODO: Split the same kidney between train and val for better generalization understanding
-
                 # write predictions to tensorboard during validation
                 if (
-                    batch_id % config.num_batches_preds_visualization_period
-                    == config.num_batches_preds_visualization_period - 1
+                    batch_id % config.num_batches_preds_val_visualization_period
+                    == config.num_batches_preds_val_visualization_period - 1
                 ):
                     add_image_sample_to_tensorboard(
                         writer,
