@@ -13,6 +13,7 @@ class ConfigParams(object):
             "TRAIN", "train_resize_before_crop"
         )
         self.epochs = config.getint("TRAIN", "epochs")
+        self.loss_function = config.get("TRAIN", "loss_function")
         self.optimizer = config.get("TRAIN", "optimizer")
         self.num_batches_train_loss_aggregation = config.getint(
             "TRAIN", "num_batches_train_loss_aggregation"
@@ -23,6 +24,10 @@ class ConfigParams(object):
         if self.optimizer == "SGD":
             self.learning_rate = config.getfloat("SGD", "learning_rate")
             self.momentum = config.getfloat("SGD", "momentum")
+        elif self.optimizer == "ADAM":
+            self.learning_rate = config.getfloat("ADAM", "learning_rate")
+        else:
+            raise Exception(f"Optimizer {self.optimizer} not supported")
 
         # Dataset
         self.train_dirs = json.loads(config.get("DATASET", "train_dirs"))

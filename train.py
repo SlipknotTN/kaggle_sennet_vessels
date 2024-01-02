@@ -19,6 +19,18 @@ from model import UnetModel
 from utils import get_device
 
 
+def iou_loss(output, target):
+    batch_size = output.shape[0]
+    loss_components = []
+    for batch_id in range(batch_size):
+        intersection_mul = max(torch.sum(output[batch_id] * target[batch_id]), 1.0)
+        union_squared = torch.sum(output[batch_id] ** 2) + torch.sum(target[batch_id] ** 2)
+        logit = 2 * intersection_mul / union_squared
+        loss_component = -torch.log(logit)
+        loss_components.append(loss_component)
+    return torch.mean(torch.stack(loss_components))
+
+
 def add_image_sample_to_tensorboard(
     writer, tag_prefix, global_step, image_sample, label_sample, pred_sample
 ):
@@ -113,10 +125,24 @@ def main():
             device=device,
         ),
     )
-    criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.SGD(
-        model.parameters(), lr=config.learning_rate, momentum=config.momentum
-    )
+
+    if config.loss_function == "BCE":
+        criterion = nn.BCEWithLogitsLoss()
+    elif config.loss_function == "IOU":
+        criterion = iou_loss
+    else:
+        raise Exception("Loss function not set")
+
+    if config.optimizer == "SGD":
+        optimizer = optim.SGD(
+            model.parameters(), lr=config.learning_rate, momentum=config.momentum
+        )
+    elif config.optimizer == "ADAM":
+        optimizer = optim.Adam(
+            model.parameters(), lr=config.learning_rate
+        )
+    else:
+        raise Exception("Missing optimizer")
 
     training_metrics = OrderedDict()
 
@@ -145,9 +171,15 @@ def main():
 
             # forward pass to get outputs
             preds = model(images_device)
+            preds_sigmoid = nn.Sigmoid()(preds)
 
             # calculate the loss between predicted and output image
-            loss = criterion(preds, labels_device)
+            if config.loss_function == "BCE":
+                loss = criterion(preds, labels_device)
+            elif config.loss_function == "IOU":
+                loss = criterion(preds_sigmoid, labels_device)
+            else:
+                raise Exception("Missing loss value")
 
             # zero the parameter (weight) gradients
             optimizer.zero_grad()
@@ -162,9 +194,9 @@ def main():
             running_loss += loss.item()
             if (
                 batch_id % config.num_batches_train_loss_aggregation
-                == config.num_batches_train_loss_aggregation
+                == config.num_batches_train_loss_aggregation - 1
             ):
-                avg_sample_loss = running_loss / 10 / config.train_batch_size
+                avg_sample_loss = running_loss / 10
                 print(
                     "Epoch: {}, Batch: {}, train last 10 batches avg. sample loss: {}".format(
                         epoch_id + 1,
@@ -192,11 +224,12 @@ def main():
                     global_step,
                     images[0],
                     labels[0],
-                    nn.Sigmoid()(preds[0]),
+                    preds_sigmoid[0],
                 )
 
-        train_loss = train_total_loss / train_batches / config.train_batch_size
+        train_loss = train_total_loss / train_batches
         print("Epoch: {}, Train avg. sample loss: {}".format(epoch_id + 1, train_loss))
+        writer.add_scalar("train/loss_epoch_avg", train_loss, global_step=(epoch_id + 1))
 
         # Iterate on validation batches
         model.eval()
@@ -215,9 +248,15 @@ def main():
 
                 # forward pass to get outputs
                 preds = model(images_device)
+                preds_sigmoid = nn.Sigmoid()(preds)
 
                 # calculate the loss between predicted and output image
-                loss = criterion(preds, labels_device)
+                if config.loss_function == "BCE":
+                    loss = criterion(preds, labels_device)
+                elif config.loss_function == "IOU":
+                    loss = criterion(preds_sigmoid, labels_device)
+                else:
+                    raise Exception("Missing loss value")
 
                 val_total_loss += loss.item()
 
@@ -234,10 +273,10 @@ def main():
                         global_step,
                         images[0],
                         labels[0],
-                        nn.Sigmoid()(preds[0]),
+                        preds_sigmoid[0],
                     )
 
-        val_loss = val_total_loss / val_batches / config.train_batch_size
+        val_loss = val_total_loss / val_batches
         print(
             "Epoch: {}, Validation avg. sample loss: {}".format(epoch_id + 1, val_loss)
         )
