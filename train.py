@@ -278,6 +278,8 @@ def main():
                     batch_id % config.num_batches_preds_val_visualization_period
                     == config.num_batches_preds_val_visualization_period - 1
                 ):
+                    # TODO: Create a single image
+                    # TODO: Add label - prediction diff
                     add_image_sample_to_tensorboard(
                         writer,
                         "val",
@@ -317,8 +319,10 @@ def main():
             )
             consecutive_no_improvements += 1
             if consecutive_no_improvements > config.patience:
-                print(f"Early stop, patience: {config.patience}, "
-                      f"consecutive no improvements: {consecutive_no_improvements}")
+                print(
+                    f"Early stop, patience: {config.patience}, "
+                    f"consecutive no improvements: {consecutive_no_improvements}"
+                )
                 break
 
     print(
