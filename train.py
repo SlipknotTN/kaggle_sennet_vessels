@@ -99,7 +99,7 @@ def main():
         dataset_with_gt=True,
     )
     train_dataloader = DataLoader(
-        train_dataset, batch_size=config.train_batch_size, shuffle=True
+        train_dataset, batch_size=config.train_batch_size, num_workers=4, shuffle=True
     )
     train_batches = len(train_dataset) // config.train_batch_size + int(
         len(train_dataset) % config.train_batch_size > 0
@@ -109,7 +109,7 @@ def main():
         f"num_batches with batch size {config.train_batch_size}: {train_batches}"
     )
     val_dataloader = DataLoader(
-        val_dataset, batch_size=config.train_batch_size, shuffle=False
+        val_dataset, batch_size=config.train_batch_size, num_workers=4, shuffle=False
     )
     val_batches = len(val_dataset) // config.train_batch_size + int(
         len(val_dataset) % config.train_batch_size > 0
@@ -156,6 +156,7 @@ def main():
 
     best_val_loss = sys.float_info.max
     best_epoch_1_index = 0
+    consecutive_no_improvements = 0
 
     for epoch_id in tqdm(range(config.epochs), desc="epoch"):
         model.train(True)
@@ -291,6 +292,13 @@ def main():
             "Epoch: {}, Validation avg. sample loss: {}".format(epoch_id + 1, val_loss)
         )
         writer.add_scalar("val/loss_epoch_avg", val_loss, global_step=(epoch_id + 1))
+
+        training_metrics[epoch_id + 1] = {
+            "train_loss": train_loss,
+            "val_loss": val_loss,
+        }
+        writer.flush()
+
         if val_loss < best_val_loss:
             print(
                 f"Epoch: {epoch_id + 1}, validation loss improvement from {best_val_loss} to {val_loss}"
@@ -302,17 +310,16 @@ def main():
             )
             torch.save(model.state_dict(), output_model_filename)
             print(f"Model saved to {output_model_filename}")
+            consecutive_no_improvements = 0
         else:
             print(
                 f"Epoch: {epoch_id + 1}, NO validation loss improvement from {best_val_loss} to {val_loss}"
             )
-            # TODO: Implement patience to stop earlier
-
-        training_metrics[epoch_id + 1] = {
-            "train_loss": train_loss,
-            "val_loss": val_loss,
-        }
-        writer.flush()
+            consecutive_no_improvements += 1
+            if consecutive_no_improvements > config.patience:
+                print(f"Early stop, patience: {config.patience}, "
+                      f"consecutive no improvements: {consecutive_no_improvements}")
+                break
 
     print(
         f"Train completed, best epoch {best_epoch_1_index} with val loss {best_val_loss}"

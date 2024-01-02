@@ -7,7 +7,7 @@ from collections import defaultdict
 def do_parsing():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="Analyze dataset slices",
+        description="Count dataset slices",
     )
     parser.add_argument(
         "--dataset_path", required=True, type=str, help="Dataset root dir"

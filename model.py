@@ -1,5 +1,5 @@
 """
-Unet model from "Fundus Images using Modified U-net Convolutional Neural Network"
+Unet model from "Fundus Images using Modified U-net Convolutional Neural Network" (Afolabi, 2020)
 """
 import torch
 import torch.nn as nn

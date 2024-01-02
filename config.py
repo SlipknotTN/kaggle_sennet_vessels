@@ -15,6 +15,7 @@ class ConfigParams(object):
         self.epochs = config.getint("TRAIN", "epochs")
         self.loss_function = config.get("TRAIN", "loss_function")
         self.optimizer = config.get("TRAIN", "optimizer")
+        self.patience = config.getint("TRAIN", "patience", fallback=self.epochs)
         self.num_batches_train_loss_aggregation = config.getint(
             "TRAIN", "num_batches_train_loss_aggregation"
         )
