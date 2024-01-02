@@ -23,13 +23,18 @@ def iou_loss(output, target):
     batch_size = output.shape[0]
     loss_components = []
     for batch_id in range(batch_size):
-        intersection_mul = max(torch.sum(output[batch_id] * target[batch_id]), 1.0)
-        union_squared = torch.sum(output[batch_id] ** 2) + torch.sum(
-            target[batch_id] ** 2
+        # Use minimum values to avoid NaN
+        intersection_mul = torch.max(
+            torch.sum(output[batch_id] * target[batch_id]),
+            torch.Tensor([0.001]).to(output.device),
+        )
+        union_squared = torch.max(
+            torch.sum(torch.square(output[batch_id]))
+            + torch.sum(torch.square(target[batch_id])),
+            torch.Tensor([0.001]).to(output.device),
         )
         logit = 2 * intersection_mul / union_squared
         loss_component = -torch.log(logit)
-        # TODO: Investigate positive loss_component
         loss_components.append(loss_component)
     return torch.mean(torch.stack(loss_components))
 
