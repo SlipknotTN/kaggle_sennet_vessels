@@ -54,15 +54,14 @@ class BloodVesselDataset(Dataset):
         if sample[1]:
             label_path = sample[1]
             label = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
-            label = np.expand_dims(label, axis=-1)
-            # Transform image
-            transformed = self.transform(image=image, label=label)
-            # print(transformed)
-            # label_shape = transformed["label"].shape
-            # print(f"Image shape {list(image.shape)}, label shape {list(label_shape)}")
+            # HW, [0.0, 1.0] range, no channel dimension
+            label = label.astype(np.float32) / 255.0
+            # Transform image and label
+            transformed = self.transform(image=image, mask=label)
+            # Additional image only transformations
             return {
                 "image": transformed["image"],
-                "label": transformed["label"],
+                "label": transformed["mask"],
                 "file": image_path,
                 "shape": list(image.shape),
             }
@@ -70,8 +69,6 @@ class BloodVesselDataset(Dataset):
         else:
             # Transform image
             transformed = self.transform(image=image)
-            # print(transformed)
-            # print(f"Image shape {list(image.shape)}")
             return {
                 "image": transformed["image"],
                 "file": image_path,

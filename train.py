@@ -23,13 +23,14 @@ def iou_loss(output, target):
     batch_size = output.shape[0]
     loss_components = []
     for batch_id in range(batch_size):
-        # Use minimum values to avoid NaN
+        # Use minimum values to avoid NaN, target is simply HW,
+        # so we need to get rid of the channel dimension of the image
         intersection_mul = torch.max(
-            torch.sum(output[batch_id] * target[batch_id]),
+            torch.sum(output[batch_id][0] * target[batch_id]),
             torch.Tensor([0.001]).to(output.device),
         )
         union_squared = torch.max(
-            torch.sum(torch.square(output[batch_id]))
+            torch.sum(torch.square(output[batch_id][0]))
             + torch.sum(torch.square(target[batch_id])),
             torch.Tensor([0.001]).to(output.device),
         )
@@ -207,7 +208,7 @@ def main():
             ):
                 avg_sample_loss = running_loss / 10
                 print(
-                    "Epoch: {}, Batch: {}, train last 10 batches avg. sample loss: {}".format(
+                    "Epoch: {}, Batch: {}, train last 10 batches avg. loss: {}".format(
                         epoch_id + 1,
                         batch_id + 1,
                         avg_sample_loss,
@@ -232,12 +233,14 @@ def main():
                     "train",
                     global_step,
                     images[0],
-                    labels[0],
+                    torch.unsqueeze(
+                        labels[0], dim=0
+                    ),  # Convert to CHW adding the channel
                     preds_sigmoid[0],
                 )
 
         train_loss = train_total_loss / train_batches
-        print("Epoch: {}, Train avg. sample loss: {}".format(epoch_id + 1, train_loss))
+        print("Epoch: {}, Train avg. loss: {}".format(epoch_id + 1, train_loss))
         writer.add_scalar(
             "train/loss_epoch_avg", train_loss, global_step=(epoch_id + 1)
         )
@@ -285,13 +288,15 @@ def main():
                         "val",
                         global_step,
                         images[0],
-                        labels[0],
+                        torch.unsqueeze(
+                            labels[0], dim=0
+                        ),  # Convert to CHW adding the channel
                         preds_sigmoid[0],
                     )
 
         val_loss = val_total_loss / val_batches
         print(
-            "Epoch: {}, Validation avg. sample loss: {}".format(epoch_id + 1, val_loss)
+            "Epoch: {}, Validation avg. loss: {}".format(epoch_id + 1, val_loss)
         )
         writer.add_scalar("val/loss_epoch_avg", val_loss, global_step=(epoch_id + 1))
 
