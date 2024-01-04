@@ -15,7 +15,7 @@ from tqdm import tqdm
 from config import ConfigParams
 from data.dataset import BloodVesselDataset
 from data.transforms import get_train_transform, get_val_transform
-from model import UnetModel
+from model import UnetAfolabi
 from utils import get_device
 
 
@@ -76,7 +76,7 @@ def main():
     print(f"Config: {config.__dict__}")
 
     # Init model
-    model = UnetModel()
+    model = UnetAfolabi()
     model.to(device)
     total_parameters = 0
     for parameter in model.parameters():

@@ -18,7 +18,7 @@ def get_train_transform(config: ConfigParams):
                 always_apply=True,
             ),
             # This is applied only to the image
-            # TODO: Maybe too much
+            # TODO: Maybe too much, but at least it predicts something on kidney_3
             A.InvertImg(p=0.5),
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),

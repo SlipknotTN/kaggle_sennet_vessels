@@ -5,9 +5,9 @@ import torch
 import torch.nn as nn
 
 
-class UnetModel(nn.Module):
+class UnetAfolabi(nn.Module):
     def __init__(self):
-        super(UnetModel, self).__init__()
+        super(UnetAfolabi, self).__init__()
         self.ds_block_1 = ConvBlock(in_channels=1, out_channels=64, num_blocks=1)
         self.ds_block_2 = ConvBlock(in_channels=64, out_channels=64, num_blocks=3)
         self.ds_block_3 = ConvBlock(in_channels=64, out_channels=64, num_blocks=3)

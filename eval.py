@@ -16,7 +16,7 @@ from tqdm import tqdm
 from config import ConfigParams
 from data.dataset import BloodVesselDataset
 from data.transforms import get_test_transform
-from model import UnetModel
+from model import UnetAfolabi
 from utils import get_device
 
 
@@ -57,7 +57,7 @@ def main():
     config = ConfigParams(args.config_path)
 
     device = get_device()
-    model = UnetModel()
+    model = UnetAfolabi()
     model.load_state_dict(torch.load(args.model_path))
     model.eval()
     model.to(device)
