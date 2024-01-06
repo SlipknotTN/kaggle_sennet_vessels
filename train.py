@@ -86,7 +86,7 @@ def main():
     print(f"Estimated size: {(total_parameters * 4 / 1024 / 1024):.2f} MB")
     print(model)
 
-    # Init datasets and dataloades
+    # Init datasets and dataloaders
     data_transform_train = get_train_transform(config)
     data_transform_val = get_val_transform(config)
     train_dataset = BloodVesselDataset(
@@ -206,17 +206,20 @@ def main():
                 batch_id % config.num_batches_train_loss_aggregation
                 == config.num_batches_train_loss_aggregation - 1
             ):
-                avg_sample_loss = running_loss / 10
+                avg_sample_loss = (
+                    running_loss / config.num_batches_train_loss_aggregation
+                )
                 print(
-                    "Epoch: {}, Batch: {}, train last 10 batches avg. loss: {}".format(
+                    "Epoch: {}, Batch: {}, train last {} batches avg. loss: {}".format(
                         epoch_id + 1,
                         batch_id + 1,
+                        config.num_batches_train_loss_aggregation,
                         avg_sample_loss,
                     )
                 )
                 running_loss = 0.0
                 writer.add_scalar(
-                    "train/loss_10_batches_avg",
+                    f"train/loss_{config.num_batches_train_loss_aggregation}_batches_avg",
                     avg_sample_loss,
                     global_step=global_step,
                 )
@@ -295,9 +298,7 @@ def main():
                     )
 
         val_loss = val_total_loss / val_batches
-        print(
-            "Epoch: {}, Validation avg. loss: {}".format(epoch_id + 1, val_loss)
-        )
+        print("Epoch: {}, Validation avg. loss: {}".format(epoch_id + 1, val_loss))
         writer.add_scalar("val/loss_epoch_avg", val_loss, global_step=(epoch_id + 1))
 
         training_metrics[epoch_id + 1] = {

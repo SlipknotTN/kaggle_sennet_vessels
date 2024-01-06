@@ -41,3 +41,6 @@ class ConfigParams(object):
         # Model
         self.model_name = config.get("MODEL", "name")
         self.model_input_size = config.getint("MODEL", "input_size")
+
+        # Inference
+        self.threshold = config.getfloat("INFERENCE", "threshold", fallback=None)
