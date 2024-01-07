@@ -41,6 +41,11 @@ class ConfigParams(object):
         # Model
         self.model_name = config.get("MODEL", "name")
         self.model_input_size = config.getint("MODEL", "input_size")
+        self.model_input_channels = config.getint("MODEL", "input_channels", fallback=1)
+        self.model_smp_model = config.get("MODEL", "smp_model")
+        if self.model_smp_model:
+            self.smp_encoder = config.get("MODEL", "smp_encoder")
+            self.smp_encoder_weights = config.get("MODEL", "smp_encoder_weights")
 
         # Inference
         self.threshold = config.getfloat("INFERENCE", "threshold", fallback=None)

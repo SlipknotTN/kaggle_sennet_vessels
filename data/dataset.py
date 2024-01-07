@@ -2,6 +2,7 @@ import os
 
 import cv2
 import numpy as np
+import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
@@ -58,6 +59,9 @@ class BloodVesselDataset(Dataset):
             label = label.astype(np.float32) / 255.0
             # Transform image and label
             transformed = self.transform(image=image, mask=label)
+            # Add the channel dimension to the label
+            if len(transformed["mask"].shape) == 2:
+                transformed["mask"] = torch.unsqueeze(transformed["mask"], dim=0)
             # Additional image only transformations
             return {
                 "image": transformed["image"],

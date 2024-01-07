@@ -1,8 +1,11 @@
 """
 Unet model from "Fundus Images using Modified U-net Convolutional Neural Network" (Afolabi, 2020)
 """
+import segmentation_models_pytorch as smp
 import torch
 import torch.nn as nn
+
+from config import ConfigParams
 
 
 class UnetAfolabi(nn.Module):
@@ -79,3 +82,25 @@ class ConvBlock(nn.Module):
         for block in self.blocks:
             x = block(x)
         return x
+
+
+def init_model(config: ConfigParams) -> nn.Module:
+    if config.model_name == "unet_afolabi":
+        model = UnetAfolabi()
+    elif config.model_smp_model is not None:
+        model = init_smp_model(config)
+    else:
+        raise Exception("Unable to initialize the model, please check the config")
+    return model
+
+
+def init_smp_model(config: ConfigParams) -> nn.Module:
+    if config.model_smp_model != "unet":
+        raise Exception("Only unet model is supported")
+    model = smp.Unet(
+        encoder_name=config.smp_encoder,  # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+        encoder_weights=config.smp_encoder_weights,  # use `imagenet` pre-trained weights for encoder initialization
+        in_channels=config.model_input_channels,  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+        classes=1,  # model output channels (number of classes in your dataset)
+    )
+    return model

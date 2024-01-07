@@ -18,7 +18,7 @@ from tqdm import tqdm
 from config import ConfigParams
 from data.dataset import BloodVesselDataset
 from data.transforms import get_test_transform
-from model import UnetAfolabi
+from model import init_model
 from utils import get_device
 
 
@@ -96,7 +96,7 @@ def main():
     assert threshold is not None
 
     device = get_device()
-    model = UnetAfolabi()
+    model = init_model(config)
     model.load_state_dict(torch.load(args.model_path))
     model.eval()
     model.to(device)
@@ -107,7 +107,6 @@ def main():
         data_transform_test,
         dataset_with_gt=os.path.exists(os.path.join(args.input_path, "labels")),
     )
-    batch_size = args.batch_size if args.batch_size else config.train_batch_size
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     test_batches = len(test_dataset) // config.train_batch_size + int(
         len(test_dataset) % batch_size > 0
@@ -150,7 +149,7 @@ def main():
 
                 image = convert_to_image(images[i], resize_to_wh)
                 label_img = (
-                    convert_to_image(torch.unsqueeze(labels[i], dim=0), resize_to_wh)
+                    convert_to_image(labels[i], resize_to_wh)
                     if labels is not None
                     else None
                 )
@@ -214,7 +213,7 @@ def main():
                     ),
                     all_in_one,
                 )
-                # TODO: Implement metrics
+                # TODO: Implement metrics starting from the losses
 
 
 if __name__ == "__main__":

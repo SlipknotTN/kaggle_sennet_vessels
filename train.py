@@ -7,7 +7,6 @@ from collections import OrderedDict
 
 import torch
 import torch.nn as nn
-import torch.optim as optim
 from tensorboardX import SummaryWriter
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -15,34 +14,16 @@ from tqdm import tqdm
 from config import ConfigParams
 from data.dataset import BloodVesselDataset
 from data.transforms import get_train_transform, get_val_transform
-from model import UnetAfolabi
+from loss import init_loss
+from model import init_model
+from optimizer import init_optimizer
 from utils import get_device
-
-
-def iou_loss(output, target):
-    batch_size = output.shape[0]
-    loss_components = []
-    for batch_id in range(batch_size):
-        # Use minimum values to avoid NaN, target is simply HW,
-        # so we need to get rid of the channel dimension of the image
-        intersection_mul = torch.max(
-            torch.sum(output[batch_id][0] * target[batch_id]),
-            torch.Tensor([0.001]).to(output.device),
-        )
-        union_squared = torch.max(
-            torch.sum(torch.square(output[batch_id][0]))
-            + torch.sum(torch.square(target[batch_id])),
-            torch.Tensor([0.001]).to(output.device),
-        )
-        logit = 2 * intersection_mul / union_squared
-        loss_component = -torch.log(logit)
-        loss_components.append(loss_component)
-    return torch.mean(torch.stack(loss_components))
 
 
 def add_image_sample_to_tensorboard(
     writer, tag_prefix, global_step, image_sample, label_sample, pred_sample
 ):
+    # TODO: Which is the range of the prediction? It seems to be 0 or 1
     writer.add_image(f"{tag_prefix}/image", image_sample, global_step=global_step)
     writer.add_image(f"{tag_prefix}/label", label_sample, global_step=global_step)
     writer.add_image(f"{tag_prefix}/pred", pred_sample, global_step=global_step)
@@ -75,8 +56,7 @@ def main():
     config = ConfigParams(args.config_path)
     print(f"Config: {config.__dict__}")
 
-    # Init model
-    model = UnetAfolabi()
+    model = init_model(config)
     model.to(device)
     total_parameters = 0
     for parameter in model.parameters():
@@ -137,21 +117,9 @@ def main():
         ),
     )
 
-    if config.loss_function == "BCE":
-        criterion = nn.BCEWithLogitsLoss()
-    elif config.loss_function == "IOU":
-        criterion = iou_loss
-    else:
-        raise Exception("Loss function not set")
+    loss_criterion, loss_input_logit = init_loss(config)
 
-    if config.optimizer == "SGD":
-        optimizer = optim.SGD(
-            model.parameters(), lr=config.learning_rate, momentum=config.momentum
-        )
-    elif config.optimizer == "ADAM":
-        optimizer = optim.Adam(model.parameters(), lr=config.learning_rate)
-    else:
-        raise Exception("Missing optimizer")
+    optimizer = init_optimizer(config, model)
 
     training_metrics = OrderedDict()
 
@@ -184,12 +152,10 @@ def main():
             preds_sigmoid = nn.Sigmoid()(preds)
 
             # calculate the loss between predicted and output image
-            if config.loss_function == "BCE":
-                loss = criterion(preds, labels_device)
-            elif config.loss_function == "IOU":
-                loss = criterion(preds_sigmoid, labels_device)
+            if loss_input_logit:
+                loss = loss_criterion(preds, labels_device)
             else:
-                raise Exception("Missing loss value")
+                loss = loss_criterion(preds_sigmoid, labels_device)
 
             # zero the parameter (weight) gradients
             optimizer.zero_grad()
@@ -236,9 +202,7 @@ def main():
                     "train",
                     global_step,
                     images[0],
-                    torch.unsqueeze(
-                        labels[0], dim=0
-                    ),  # Convert to CHW adding the channel
+                    labels[0],
                     preds_sigmoid[0],
                 )
 
@@ -268,16 +232,15 @@ def main():
                 preds_sigmoid = nn.Sigmoid()(preds)
 
                 # calculate the loss between predicted and output image
-                if config.loss_function == "BCE":
-                    loss = criterion(preds, labels_device)
-                elif config.loss_function == "IOU":
-                    loss = criterion(preds_sigmoid, labels_device)
+                if loss_input_logit:
+                    loss = loss_criterion(preds, labels_device)
                 else:
-                    raise Exception("Missing loss value")
+                    loss = loss_criterion(preds_sigmoid, labels_device)
 
                 val_total_loss += loss.item()
 
-                # TODO: Calculate dice metric
+                # TODO: Calculate and plot all the losses for comparison
+                # TODO: Calculate surface dice metric
 
                 # write predictions to tensorboard during validation
                 if (
@@ -291,9 +254,7 @@ def main():
                         "val",
                         global_step,
                         images[0],
-                        torch.unsqueeze(
-                            labels[0], dim=0
-                        ),  # Convert to CHW adding the channel
+                        labels[0],
                         preds_sigmoid[0],
                     )
 
@@ -338,6 +299,9 @@ def main():
     shutil.copy(args.config_path, os.path.join(args.output_dir, "config.cfg"))
     with open(os.path.join(args.output_dir, "training_metrics.json"), "w") as out_fp:
         json.dump(training_metrics, out_fp, indent=4)
+
+    # Copy transforms.py to keep track of the augmentations
+    shutil.copy("./data/transforms.py", os.path.join(args.output_dir, "transforms.py"))
 
     writer.close()
 
