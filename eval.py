@@ -235,7 +235,8 @@ def main():
                     os.path.join(
                         args.output_dir,
                         "images",
-                        os.path.basename(image_path)[:-4] + f"_dice_score_{dice_score:.2f}.png",
+                        os.path.basename(image_path)[:-4]
+                        + f"_dice_score_{dice_score:.2f}.png",
                     ),
                     all_in_one,
                 )

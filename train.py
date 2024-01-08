@@ -121,6 +121,12 @@ def main():
     optimizer = init_optimizer(config, model)
     val_metrics = init_metrics(config)
 
+    val_metric_to_monitor = None
+    for val_metric in val_metrics:
+        if val_metric.to_monitor:
+            val_metric_to_monitor = val_metric
+    assert val_metric_to_monitor is not None, "No val_metric_to_monitor"
+
     training_metrics = OrderedDict()
 
     best_monitored_metric_value = None
@@ -279,7 +285,7 @@ def main():
                 ):
                     print(
                         f"Epoch: {epoch_id + 1}, "
-                        f"validation {single_metric_name} improvement from {best_monitored_metric_value} "
+                        f"validation avg. {single_metric_name} improvement from {best_monitored_metric_value} "
                         f"to {monitored_metric_value}"
                     )
                     best_monitored_metric_value = monitored_metric_value
@@ -293,7 +299,7 @@ def main():
                 else:
                     print(
                         f"Epoch: {epoch_id + 1}, "
-                        f"NO validation {single_metric_name} improvement from {best_monitored_metric_value} "
+                        f"NO validation avg. {single_metric_name} improvement from {best_monitored_metric_value} "
                         f"to {monitored_metric_value}"
                     )
                     consecutive_no_improvements += 1
@@ -310,7 +316,8 @@ def main():
             break
 
     print(
-        f"Train completed, best epoch {best_epoch_1_index} with val {val_metric_to_monitor.name} {best_monitored_metric_value}"
+        f"Train completed, best epoch {best_epoch_1_index} "
+        f"with val avg. {val_metric_to_monitor.name} {best_monitored_metric_value}"
     )
     print(f"List of losses for each epoch: {training_metrics}")
     shutil.copy(args.config_path, os.path.join(args.output_dir, "config.cfg"))
