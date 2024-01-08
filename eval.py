@@ -118,7 +118,7 @@ def main():
 
     os.makedirs(os.path.join(args.output_dir, "images"), exist_ok=False)
 
-    dice_score_class = DiceScore()
+    dice_score_class = DiceScore(to_monitor=False)
 
     dice_scores = defaultdict(list)
     predictions = list()
@@ -140,6 +140,9 @@ def main():
 
             # forward pass to get outputs
             predictions_raw = nn.Sigmoid()(model(images))
+            # Prediction is thresholded because rle_encoding used for the challenge
+            # requires only 0 or 1 values, while the validation metrics during the training
+            # are calculated on the sigmoid raw output
             predictions_thresholded = torch.as_tensor(
                 predictions_raw > threshold, dtype=predictions_raw.dtype
             )
@@ -218,14 +221,6 @@ def main():
                     all_in_one = cv2.hconcat(
                         [image, predictions_raw_img, predictions_thresholded_img]
                     )
-                cv2.imwrite(
-                    os.path.join(
-                        args.output_dir,
-                        "images",
-                        os.path.basename(image_path)[:-4] + ".png",
-                    ),
-                    all_in_one,
-                )
                 dice_score = dice_score_class.evaluate(
                     predictions_thresholded[i], labels[i]
                 )
@@ -236,6 +231,14 @@ def main():
                 )
                 # TODO: Calculate 3D surface dice metric (target of the competition),
                 # but this works only for single kidneys
+                cv2.imwrite(
+                    os.path.join(
+                        args.output_dir,
+                        "images",
+                        os.path.basename(image_path)[:-4] + f"_dice_score_{dice_score:.2f}.png",
+                    ),
+                    all_in_one,
+                )
 
     metrics = defaultdict(dict)
     for slice, scores in dice_scores.items():
