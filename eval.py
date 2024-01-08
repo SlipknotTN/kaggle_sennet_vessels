@@ -5,7 +5,10 @@ Run predictions over a list of images
 - Calculate the metrics if ground truth is available
 """
 import argparse
+import csv
+import json
 import os
+from collections import defaultdict
 from typing import Optional, Tuple
 
 import cv2
@@ -18,6 +21,7 @@ from tqdm import tqdm
 from config import ConfigParams
 from data.dataset import BloodVesselDataset
 from data.transforms import get_test_transform
+from metrics import DiceScore
 from model import init_model
 from utils import get_device
 
@@ -112,7 +116,12 @@ def main():
         len(test_dataset) % batch_size > 0
     )
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs(os.path.join(args.output_dir, "images"), exist_ok=False)
+
+    dice_score_class = DiceScore()
+
+    dice_scores = defaultdict(list)
+    predictions = list()
 
     # Iterate on test batches
     with torch.no_grad():
@@ -127,16 +136,18 @@ def main():
 
             # Move to GPU
             images = images.to(device)
+            labels = labels.to(device)
 
             # forward pass to get outputs
             predictions_raw = nn.Sigmoid()(model(images))
             predictions_thresholded = torch.as_tensor(
-                predictions_raw > threshold, dtype=torch.float32
+                predictions_raw > threshold, dtype=predictions_raw.dtype
             )
 
             for i in range(images.shape[0]):
                 image_path = images_paths[i]
-                print(image_path)
+
+                kidney_slice_name = image_path.split(os.sep)[-3]
 
                 # Shape format is a list of 3 elements (H-W-C).
                 # Each element is a list of batch_size length with the values
@@ -209,11 +220,39 @@ def main():
                     )
                 cv2.imwrite(
                     os.path.join(
-                        args.output_dir, os.path.basename(image_path)[:-4] + ".png"
+                        args.output_dir,
+                        "images",
+                        os.path.basename(image_path)[:-4] + ".png",
                     ),
                     all_in_one,
                 )
-                # TODO: Implement metrics starting from the losses
+                dice_score = dice_score_class.evaluate(
+                    predictions_thresholded[i], labels[i]
+                )
+                print(f"{image_path} dice_score {dice_score:.2f}")
+                dice_scores[kidney_slice_name].append(dice_score)
+                predictions.append(
+                    {"image_path": image_path, "dice_score": f"{dice_score:.2f}"}
+                )
+                # TODO: Calculate 3D surface dice metric (target of the competition),
+                # but this works only for single kidneys
+
+    metrics = defaultdict(dict)
+    for slice, scores in dice_scores.items():
+        avg_dice_score = np.mean(scores)
+        print(f"{slice} avg dice score: {avg_dice_score:.2f}")
+        metrics[slice]["avg_dice_score"] = f"{avg_dice_score:.2f}"
+    with open(os.path.join(args.output_dir, "metrics.json"), "w") as out_fp:
+        json.dump(metrics, out_fp, indent=4)
+    print(f"Metrics written to {os.path.join(args.output_dir, 'metrics.json')}")
+
+    with open(os.path.join(args.output_dir, "predictions.json"), "w") as out_fp:
+        fieldnames = ["image_path", "dice_score"]
+        writer = csv.DictWriter(out_fp, fieldnames=fieldnames)
+        writer.writeheader()
+        for prediction in predictions:
+            writer.writerow(prediction)
+    print(f"Predictions written to {os.path.join(args.output_dir, 'predictions.json')}")
 
 
 if __name__ == "__main__":

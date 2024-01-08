@@ -2,8 +2,7 @@ import argparse
 import json
 import os
 import shutil
-import sys
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 
 import torch
 import torch.nn as nn
@@ -15,6 +14,7 @@ from config import ConfigParams
 from data.dataset import BloodVesselDataset
 from data.transforms import get_train_transform, get_val_transform
 from loss import init_loss
+from metrics import init_metrics
 from model import init_model
 from optimizer import init_optimizer
 from utils import get_device
@@ -54,7 +54,7 @@ def main():
     device = get_device()
 
     config = ConfigParams(args.config_path)
-    print(f"Config: {config.__dict__}")
+    print(f"Config: {json.dumps(config.__dict__, indent=4)}")
 
     model = init_model(config)
     model.to(device)
@@ -117,13 +117,13 @@ def main():
         ),
     )
 
-    loss_criterion, loss_input_logit = init_loss(config)
-
+    loss_criterion = init_loss(config)
     optimizer = init_optimizer(config, model)
+    val_metrics = init_metrics(config)
 
     training_metrics = OrderedDict()
 
-    best_val_loss = sys.float_info.max
+    best_monitored_metric_value = None
     best_epoch_1_index = 0
     consecutive_no_improvements = 0
 
@@ -148,14 +148,11 @@ def main():
             images_device = images.to(device)
 
             # forward pass to get outputs
-            preds = model(images_device)
-            preds_sigmoid = nn.Sigmoid()(preds)
+            preds_logits = model(images_device)
+            preds_sigmoid = nn.Sigmoid()(preds_logits)
 
             # calculate the loss between predicted and output image
-            if loss_input_logit:
-                loss = loss_criterion(preds, labels_device)
-            else:
-                loss = loss_criterion(preds_sigmoid, labels_device)
+            loss = loss_criterion(preds_logits, labels_device)
 
             # zero the parameter (weight) gradients
             optimizer.zero_grad()
@@ -214,9 +211,9 @@ def main():
 
         # Iterate on validation batches
         model.eval()
-        print(f"Epoch: {epoch_id + 1}, calculating validation loss...")
+        print(f"Epoch: {epoch_id + 1}, calculating validation metrics...")
         with torch.no_grad():
-            val_total_loss = 0.0
+            val_total_metrics = defaultdict(float)
             for batch_id, data in tqdm(enumerate(val_dataloader), total=val_batches):
                 global_step = epoch_id * train_batches + batch_id
                 # get the input images and labels
@@ -228,19 +225,18 @@ def main():
                 images_device = images.to(device)
 
                 # forward pass to get outputs
-                preds = model(images_device)
-                preds_sigmoid = nn.Sigmoid()(preds)
+                preds_logits = model(images_device)
+                preds_sigmoid = nn.Sigmoid()(preds_logits)
 
-                # calculate the loss between predicted and output image
-                if loss_input_logit:
-                    loss = loss_criterion(preds, labels_device)
-                else:
-                    loss = loss_criterion(preds_sigmoid, labels_device)
+                # calculate the metrics on validation batch
+                for single_val_metric in val_metrics:
+                    metric_value = single_val_metric.evaluate(
+                        preds_sigmoid, labels_device
+                    )
+                    val_total_metrics[single_val_metric.name] += metric_value
 
-                val_total_loss += loss.item()
-
-                # TODO: Calculate and plot all the losses for comparison
-                # TODO: Calculate surface dice metric
+                # TODO: Calculate 3D surface dice metric (target of the competition),
+                # but this works only for single kidneys
 
                 # write predictions to tensorboard during validation
                 if (
@@ -258,42 +254,63 @@ def main():
                         preds_sigmoid[0],
                     )
 
-        val_loss = val_total_loss / val_batches
-        print("Epoch: {}, Validation avg. loss: {}".format(epoch_id + 1, val_loss))
-        writer.add_scalar("val/loss_epoch_avg", val_loss, global_step=(epoch_id + 1))
+        training_metrics[epoch_id + 1] = {"train_loss": train_loss}
 
-        training_metrics[epoch_id + 1] = {
-            "train_loss": train_loss,
-            "val_loss": val_loss,
-        }
+        early_stop = False
+        for single_metric in val_metrics:
+            single_metric_name = single_metric.name
+            single_metric_avg = val_total_metrics[single_metric_name] / val_batches
+            print(
+                f"Epoch: {epoch_id + 1}, Validation avg. {single_metric_name}: {single_metric_avg}"
+            )
+            writer.add_scalar(
+                f"val/{single_metric_name}_avg",
+                single_metric_avg,
+                global_step=(epoch_id + 1),
+            )
+            training_metrics[epoch_id + 1][
+                f"val_{single_metric_name}"
+            ] = single_metric_avg
+            if single_metric.to_monitor:
+                monitored_metric_value = single_metric_avg
+                if single_metric.is_improved(
+                    new_value=monitored_metric_value,
+                    old_value=best_monitored_metric_value,
+                ):
+                    print(
+                        f"Epoch: {epoch_id + 1}, "
+                        f"validation {single_metric_name} improvement from {best_monitored_metric_value} "
+                        f"to {monitored_metric_value}"
+                    )
+                    best_monitored_metric_value = monitored_metric_value
+                    best_epoch_1_index = epoch_id + 1
+                    output_model_filename = (
+                        f"{args.output_dir}/{config.model_name}_{epoch_id + 1}.pt"
+                    )
+                    torch.save(model.state_dict(), output_model_filename)
+                    print(f"Model saved to {output_model_filename}")
+                    consecutive_no_improvements = 0
+                else:
+                    print(
+                        f"Epoch: {epoch_id + 1}, "
+                        f"NO validation {single_metric_name} improvement from {best_monitored_metric_value} "
+                        f"to {monitored_metric_value}"
+                    )
+                    consecutive_no_improvements += 1
+                    if consecutive_no_improvements > config.patience:
+                        print(
+                            f"Early stop, patience: {config.patience}, "
+                            f"consecutive no improvements: {consecutive_no_improvements}"
+                        )
+                        early_stop = True
+
         writer.flush()
 
-        if val_loss < best_val_loss:
-            print(
-                f"Epoch: {epoch_id + 1}, validation loss improvement from {best_val_loss} to {val_loss}"
-            )
-            best_val_loss = val_loss
-            best_epoch_1_index = epoch_id + 1
-            output_model_filename = (
-                f"{args.output_dir}/{config.model_name}_{epoch_id + 1}.pt"
-            )
-            torch.save(model.state_dict(), output_model_filename)
-            print(f"Model saved to {output_model_filename}")
-            consecutive_no_improvements = 0
-        else:
-            print(
-                f"Epoch: {epoch_id + 1}, NO validation loss improvement from {best_val_loss} to {val_loss}"
-            )
-            consecutive_no_improvements += 1
-            if consecutive_no_improvements > config.patience:
-                print(
-                    f"Early stop, patience: {config.patience}, "
-                    f"consecutive no improvements: {consecutive_no_improvements}"
-                )
-                break
+        if early_stop:
+            break
 
     print(
-        f"Train completed, best epoch {best_epoch_1_index} with val loss {best_val_loss}"
+        f"Train completed, best epoch {best_epoch_1_index} with val {val_metric_to_monitor.name} {best_monitored_metric_value}"
     )
     print(f"List of losses for each epoch: {training_metrics}")
     shutil.copy(args.config_path, os.path.join(args.output_dir, "config.cfg"))

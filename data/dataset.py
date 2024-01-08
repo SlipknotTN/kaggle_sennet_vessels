@@ -62,7 +62,6 @@ class BloodVesselDataset(Dataset):
             # Add the channel dimension to the label
             if len(transformed["mask"].shape) == 2:
                 transformed["mask"] = torch.unsqueeze(transformed["mask"], dim=0)
-            # Additional image only transformations
             return {
                 "image": transformed["image"],
                 "label": transformed["mask"],
