@@ -49,7 +49,8 @@ class UnetAfolabi(nn.Module):
         x_1_up = self.upsampling_2x(x_2_up_conv)  # 32x512x512
         x_1_cat = torch.cat([x_1, x_1_up], dim=1)  # 96x512x512
         x_1_up_conv = self.us_block_1(x_1_cat)  # 32x512x512
-        return self.last_conv(x_1_up_conv)  # 1x512x512
+        x_1_dropout = nn.Dropout()(x_1_up_conv)  # Not explicitly mentioned in the paper
+        return self.last_conv(x_1_dropout)  # 1x512x512
 
 
 class ConvBlock(nn.Module):
