@@ -7,7 +7,7 @@ from collections import defaultdict
 def do_parsing():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="Count dataset slices",
+        description="Count dataset subsets",
     )
     parser.add_argument(
         "--dataset_path", required=True, type=str, help="Dataset root dir"
@@ -24,14 +24,14 @@ def main():
     train_dir = os.path.join(args.dataset_path, "train")
 
     print("File system")
-    for slice in os.listdir(train_dir):
-        slice_images = (
-            os.listdir(os.path.join(train_dir, slice, "images"))
-            if os.path.exists(os.path.join(train_dir, slice, "images"))
+    for subset in os.listdir(train_dir):
+        subset_images = (
+            os.listdir(os.path.join(train_dir, subset, "images"))
+            if os.path.exists(os.path.join(train_dir, subset, "images"))
             else []
         )
-        slice_labels = os.listdir(os.path.join(train_dir, slice, "labels"))
-        print(f"train {slice}: images {len(slice_images)}, labels {len(slice_labels)}")
+        subset_labels = os.listdir(os.path.join(train_dir, subset, "labels"))
+        print(f"train {subset}: images {len(subset_images)}, labels {len(subset_labels)}")
 
     csv_data_dict = defaultdict(list)
     with open(os.path.join(args.dataset_path, "train_rles.csv"), "r") as train_fp:
@@ -40,13 +40,13 @@ def main():
         for row in reader:
             full_data_id, rle = row[0], row[1]
             full_data_id_parts = full_data_id.split("_")
-            slice_name = "_".join(full_data_id_parts[:-1])
-            data_slice_id = int(full_data_id_parts[-1])
-            csv_data_dict[slice_name].append(data_slice_id)
+            subset_name = "_".join(full_data_id_parts[:-1])
+            data_subset_id = int(full_data_id_parts[-1])
+            csv_data_dict[subset_name].append(data_subset_id)
 
     print("CSV file")
-    for data_slice, data_rows in csv_data_dict.items():
-        print(f"train slice {data_slice}: {len(data_rows)}")
+    for data_subset, data_rows in csv_data_dict.items():
+        print(f"train subset {data_subset}: {len(data_rows)}")
 
 
 if __name__ == "__main__":
