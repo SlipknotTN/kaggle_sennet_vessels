@@ -36,7 +36,9 @@ def main():
             else []
         )
         subset_labels = os.listdir(os.path.join(train_dir, subset, "labels"))
-        print(f"train {subset}: images {len(subset_images)}, labels {len(subset_labels)}")
+        print(
+            f"train {subset}: images {len(subset_images)}, labels {len(subset_labels)}"
+        )
         for image_path in tqdm(subset_images, desc="subset_image"):
             image = cv2.imread(
                 os.path.join(train_dir, subset, "images", image_path),

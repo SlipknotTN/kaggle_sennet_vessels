@@ -1,6 +1,7 @@
 """
 Official code provided by the competition, but it is suggested to use the fast_surface_dice
 implementation which has an easier interface, it is faster and less prone to OOM
+From: https://github.com/google-deepmind/surface-distance/tree/master
 """
 # Copyright 2018 Google Inc. All Rights Reserved.
 #

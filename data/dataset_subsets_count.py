@@ -31,7 +31,9 @@ def main():
             else []
         )
         subset_labels = os.listdir(os.path.join(train_dir, subset, "labels"))
-        print(f"train {subset}: images {len(subset_images)}, labels {len(subset_labels)}")
+        print(
+            f"train {subset}: images {len(subset_images)}, labels {len(subset_labels)}"
+        )
 
     csv_data_dict = defaultdict(list)
     with open(os.path.join(args.dataset_path, "train_rles.csv"), "r") as train_fp:
