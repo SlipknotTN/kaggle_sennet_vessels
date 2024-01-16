@@ -50,7 +50,7 @@ class ConfigParams(object):
         self.model_smp_model = config.get("MODEL", "smp_model", fallback=None)
         if self.model_smp_model:
             self.smp_encoder = config.get("MODEL", "smp_encoder")
-            self.smp_encoder_weights = config.get("MODEL", "smp_encoder_weights")
+            self.smp_encoder_weights = config.get("MODEL", "smp_encoder_weights", fallback=None)
 
         # Inference
         self.threshold = config.getfloat("INFERENCE", "threshold", fallback=None)

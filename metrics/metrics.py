@@ -37,7 +37,7 @@ class DiceScore(Metric):
         super().__init__(to_monitor)
         self._name = "dice_score"
         self.dice_loss_function = DiceLoss(
-            mode="binary", from_logits=False, log_loss=False
+            mode="binary", log_loss=False, from_logits=False,
         )
 
     def evaluate(self, output, target) -> float:
