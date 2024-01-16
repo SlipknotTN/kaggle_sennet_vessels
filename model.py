@@ -9,19 +9,21 @@ from config import ConfigParams
 
 
 class UnetAfolabi(nn.Module):
-    def __init__(self):
+    def __init__(self, batch_norm: bool = True, dropout: bool = True):
         super(UnetAfolabi, self).__init__()
-        self.ds_block_1 = ConvBlock(in_channels=1, out_channels=64, num_blocks=1)
-        self.ds_block_2 = ConvBlock(in_channels=64, out_channels=64, num_blocks=3)
-        self.ds_block_3 = ConvBlock(in_channels=64, out_channels=64, num_blocks=3)
-        self.ds_block_4 = ConvBlock(in_channels=64, out_channels=64, num_blocks=3)
-        self.bottom = ConvBlock(in_channels=64, out_channels=64, num_blocks=3)
+        self.batch_norm = batch_norm
+        self.dropout = dropout
+        self.ds_block_1 = ConvBlock(in_channels=1, out_channels=64, num_blocks=1, batch_norm=batch_norm)
+        self.ds_block_2 = ConvBlock(in_channels=64, out_channels=64, num_blocks=3, batch_norm=batch_norm)
+        self.ds_block_3 = ConvBlock(in_channels=64, out_channels=64, num_blocks=3, batch_norm=batch_norm)
+        self.ds_block_4 = ConvBlock(in_channels=64, out_channels=64, num_blocks=3, batch_norm=batch_norm)
+        self.bottom = ConvBlock(in_channels=64, out_channels=64, num_blocks=3, batch_norm=batch_norm)
         self.max_pooling = nn.MaxPool2d(kernel_size=2, stride=2)
         self.upsampling_2x = nn.UpsamplingNearest2d(scale_factor=2.0)
-        self.us_block_4 = ConvBlock(in_channels=128, out_channels=32, num_blocks=3)
-        self.us_block_3 = ConvBlock(in_channels=96, out_channels=32, num_blocks=3)
-        self.us_block_2 = ConvBlock(in_channels=96, out_channels=32, num_blocks=3)
-        self.us_block_1 = ConvBlock(in_channels=96, out_channels=32, num_blocks=3)
+        self.us_block_4 = ConvBlock(in_channels=128, out_channels=32, num_blocks=3, batch_norm=batch_norm)
+        self.us_block_3 = ConvBlock(in_channels=96, out_channels=32, num_blocks=3, batch_norm=batch_norm)
+        self.us_block_2 = ConvBlock(in_channels=96, out_channels=32, num_blocks=3, batch_norm=batch_norm)
+        self.us_block_1 = ConvBlock(in_channels=96, out_channels=32, num_blocks=3, batch_norm=batch_norm)
         self.last_conv = nn.Conv2d(
             in_channels=32, out_channels=1, kernel_size=(1, 1), padding=0
         )
@@ -49,35 +51,52 @@ class UnetAfolabi(nn.Module):
         x_1_up = self.upsampling_2x(x_2_up_conv)  # 32x512x512
         x_1_cat = torch.cat([x_1, x_1_up], dim=1)  # 96x512x512
         x_1_up_conv = self.us_block_1(x_1_cat)  # 32x512x512
-        x_1_dropout = nn.Dropout()(x_1_up_conv)  # Not explicitly mentioned in the paper
-        return self.last_conv(x_1_dropout)  # 1x512x512
+        if self.dropout:
+            x_1_dropout = nn.Dropout()(x_1_up_conv)  # Not explicitly mentioned in the paper
+            return self.last_conv(x_1_dropout)  # 1x512x512
+        else:
+            return self.last_conv(x_1_up_conv)  # 1x512x512
 
 
 class ConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, num_blocks):
+    def __init__(self, in_channels, out_channels, num_blocks, batch_norm = True):
         """
         Args:
             in_channels: number of input channels only for the first  convolution layer
             out_channels: number of the output channels of all the convolution layers
             which is also the in_channels for the next step
             num_blocks: number of conv+leaky_relu+bn blocks
+            batch_norm: apply batch normalization or not
         """
         super(ConvBlock, self).__init__()
         self.blocks = nn.ModuleList()
         for i in range(num_blocks):
             input_channels = in_channels if i == 0 else out_channels
-            self.blocks.append(
-                nn.Sequential(
-                    nn.Conv2d(
-                        in_channels=input_channels,
-                        out_channels=out_channels,
-                        kernel_size=(3, 3),
-                        padding=1,
-                    ),
-                    nn.LeakyReLU(negative_slope=0.018),
-                    nn.BatchNorm2d(out_channels),
+            if batch_norm:
+                self.blocks.append(
+                    nn.Sequential(
+                        nn.Conv2d(
+                            in_channels=input_channels,
+                            out_channels=out_channels,
+                            kernel_size=(3, 3),
+                            padding=1,
+                        ),
+                        nn.LeakyReLU(negative_slope=0.018),
+                        nn.BatchNorm2d(out_channels)
+                    )
                 )
-            )
+            else:
+                self.blocks.append(
+                    nn.Sequential(
+                        nn.Conv2d(
+                            in_channels=input_channels,
+                            out_channels=out_channels,
+                            kernel_size=(3, 3),
+                            padding=1,
+                        ),
+                        nn.LeakyReLU(negative_slope=0.018),
+                    )
+                )
 
     def forward(self, x):
         for block in self.blocks:
@@ -87,7 +106,7 @@ class ConvBlock(nn.Module):
 
 def init_model(config: ConfigParams) -> nn.Module:
     if config.model_name == "unet_afolabi":
-        model = UnetAfolabi()
+        model = UnetAfolabi(batch_norm=config.model_batch_norm, dropout=config.model_dropout)
     elif config.model_smp_model is not None:
         model = init_smp_model(config)
     else:

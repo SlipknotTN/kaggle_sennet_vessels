@@ -47,6 +47,25 @@ class DiceScore(Metric):
         return new_value > old_value if old_value is not None else True
 
 
+class DiceLossMetric(Metric):
+    """
+    Same of dice_loss (without log and with logits INPUT!!!)
+    """
+    # TODO: Change it to sigmoid for better alignment after the tests
+    def __init__(self, to_monitor: bool):
+        super().__init__(to_monitor)
+        self._name = "dice_loss"
+        self.dice_loss_function = DiceLoss(
+            mode="binary", log_loss=False, from_logits=True,
+        )
+
+    def evaluate(self, output, target) -> float:
+        return self.dice_loss_function(output, target).item()
+
+    def is_improved(self, new_value, old_value: Optional) -> bool:
+        return new_value < old_value if old_value is not None else True
+
+
 def init_metrics(config: ConfigParams) -> List[Metric]:
     """
     Initialize metrics classe
@@ -67,6 +86,11 @@ def init_metrics(config: ConfigParams) -> List[Metric]:
                 metrics.append(DiceScore(to_monitor=True))
             else:
                 metrics.append(DiceScore(to_monitor=False))
+        elif val_metric == "dice_loss":
+            if val_metric == config.val_metric_to_monitor:
+                metrics.append(DiceLossMetric(to_monitor=True))
+            else:
+                metrics.append(DiceLossMetric(to_monitor=False))
         else:
             raise Exception(f"Metric {val_metric} unknown")
     return metrics

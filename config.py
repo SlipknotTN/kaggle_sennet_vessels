@@ -51,6 +51,9 @@ class ConfigParams(object):
         if self.model_smp_model:
             self.smp_encoder = config.get("MODEL", "smp_encoder")
             self.smp_encoder_weights = config.get("MODEL", "smp_encoder_weights", fallback=None)
+        if self.model_name == "unet_afolabi":
+            self.model_batch_norm = config.getboolean("MODEL", "batch_normalization", fallback=True)
+            self.model_dropout = config.getboolean("MODEL", "dropout", fallback=True)
 
         # Inference
         self.threshold = config.getfloat("INFERENCE", "threshold", fallback=None)
