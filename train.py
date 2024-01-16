@@ -14,7 +14,7 @@ from config import ConfigParams
 from data.dataset import BloodVesselDataset
 from data.transforms import get_train_transform, get_val_transform
 from loss import init_loss
-from metrics import init_metrics
+from metrics.metrics import init_metrics
 from model import init_model
 from optimizer import init_optimizer
 from utils import get_device
@@ -103,19 +103,20 @@ def main():
     # Train loop
     os.makedirs(args.output_dir, exist_ok=True)
     writer = SummaryWriter(logdir=args.output_dir)
-    writer.add_graph(
-        model,
-        torch.zeros(
-            [
-                config.train_batch_size,
-                1,
-                config.model_input_size,
-                config.model_input_size,
-            ],
-            dtype=torch.float32,
-            device=device,
-        ),
-    )
+    # TODO: Call model.eval() for add_graph
+    # writer.add_graph(
+    #     model,
+    #     torch.zeros(
+    #         [
+    #             config.train_batch_size,
+    #             1,
+    #             config.model_input_size,
+    #             config.model_input_size,
+    #         ],
+    #         dtype=torch.float32,
+    #         device=device,
+    #     ),
+    # )
 
     loss_criterion = init_loss(config)
     optimizer = init_optimizer(config, model)
@@ -134,6 +135,7 @@ def main():
     consecutive_no_improvements = 0
 
     for epoch_id in tqdm(range(config.epochs), desc="epoch"):
+
         model.train(True)
 
         train_total_loss = 0.0
@@ -147,11 +149,13 @@ def main():
             # get the input images and labels
             images = data["image"]
             labels = data["label"]
-            # print(f"Images shape: {images.shape}, labels shape: {labels.shape}")
 
             # Move to GPU
             labels_device = labels.to(device)
             images_device = images.to(device)
+
+            # zero the parameter (weight) gradients
+            optimizer.zero_grad()
 
             # forward pass to get outputs
             preds_logits = model(images_device)
@@ -159,10 +163,6 @@ def main():
 
             # calculate the loss between predicted and output image
             loss = loss_criterion(preds_logits, labels_device)
-
-            # zero the parameter (weight) gradients
-            optimizer.zero_grad()
-
             # backward pass to calculate the weight gradients
             loss.backward()
 
@@ -216,6 +216,7 @@ def main():
         )
 
         # Iterate on validation batches
+        # TODO: Better val without it?!
         model.eval()
         print(f"Epoch: {epoch_id + 1}, calculating validation metrics...")
         with torch.no_grad():
@@ -260,55 +261,55 @@ def main():
                         preds_sigmoid[0],
                     )
 
-        training_metrics[epoch_id + 1] = {"train_loss": train_loss}
+            training_metrics[epoch_id + 1] = {"train_loss": train_loss}
 
-        early_stop = False
-        for single_metric in val_metrics:
-            single_metric_name = single_metric.name
-            single_metric_avg = val_total_metrics[single_metric_name] / val_batches
-            print(
-                f"Epoch: {epoch_id + 1}, Validation avg. {single_metric_name}: {single_metric_avg}"
-            )
-            writer.add_scalar(
-                f"val/{single_metric_name}_avg",
-                single_metric_avg,
-                global_step=(epoch_id + 1),
-            )
-            training_metrics[epoch_id + 1][
-                f"val_{single_metric_name}"
-            ] = single_metric_avg
-            if single_metric.to_monitor:
-                monitored_metric_value = single_metric_avg
-                if single_metric.is_improved(
-                    new_value=monitored_metric_value,
-                    old_value=best_monitored_metric_value,
-                ):
-                    print(
-                        f"Epoch: {epoch_id + 1}, "
-                        f"validation avg. {single_metric_name} improvement from {best_monitored_metric_value} "
-                        f"to {monitored_metric_value}"
-                    )
-                    best_monitored_metric_value = monitored_metric_value
-                    best_epoch_1_index = epoch_id + 1
-                    output_model_filename = (
-                        f"{args.output_dir}/{config.model_name}_{epoch_id + 1}.pt"
-                    )
-                    torch.save(model.state_dict(), output_model_filename)
-                    print(f"Model saved to {output_model_filename}")
-                    consecutive_no_improvements = 0
-                else:
-                    print(
-                        f"Epoch: {epoch_id + 1}, "
-                        f"NO validation avg. {single_metric_name} improvement from {best_monitored_metric_value} "
-                        f"to {monitored_metric_value}"
-                    )
-                    consecutive_no_improvements += 1
-                    if consecutive_no_improvements > config.patience:
+            early_stop = False
+            for single_metric in val_metrics:
+                single_metric_name = single_metric.name
+                single_metric_avg = val_total_metrics[single_metric_name] / val_batches
+                print(
+                    f"Epoch: {epoch_id + 1}, Validation avg. {single_metric_name}: {single_metric_avg}"
+                )
+                writer.add_scalar(
+                    f"val/{single_metric_name}_avg",
+                    single_metric_avg,
+                    global_step=(epoch_id + 1),
+                )
+                training_metrics[epoch_id + 1][
+                    f"val_{single_metric_name}"
+                ] = single_metric_avg
+                if single_metric.to_monitor:
+                    monitored_metric_value = single_metric_avg
+                    if single_metric.is_improved(
+                        new_value=monitored_metric_value,
+                        old_value=best_monitored_metric_value,
+                    ):
                         print(
-                            f"Early stop, patience: {config.patience}, "
-                            f"consecutive no improvements: {consecutive_no_improvements}"
+                            f"Epoch: {epoch_id + 1}, "
+                            f"validation avg. {single_metric_name} improvement from {best_monitored_metric_value} "
+                            f"to {monitored_metric_value}"
                         )
-                        early_stop = True
+                        best_monitored_metric_value = monitored_metric_value
+                        best_epoch_1_index = epoch_id + 1
+                        output_model_filename = (
+                            f"{args.output_dir}/{config.model_name}_{epoch_id + 1}.pt"
+                        )
+                        torch.save(model.state_dict(), output_model_filename)
+                        print(f"Model saved to {output_model_filename}")
+                        consecutive_no_improvements = 0
+                    else:
+                        print(
+                            f"Epoch: {epoch_id + 1}, "
+                            f"NO validation avg. {single_metric_name} improvement from {best_monitored_metric_value} "
+                            f"to {monitored_metric_value}"
+                        )
+                        consecutive_no_improvements += 1
+                        if consecutive_no_improvements > config.patience:
+                            print(
+                                f"Early stop, patience: {config.patience}, "
+                                f"consecutive no improvements: {consecutive_no_improvements}"
+                            )
+                            early_stop = True
 
         writer.flush()
 
