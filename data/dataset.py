@@ -62,8 +62,10 @@ class BloodVesselDataset(Dataset):
             # Add the channel dimension to the label
             if len(transformed["mask"].shape) == 2:
                 transformed["mask"] = torch.unsqueeze(transformed["mask"], dim=0)
+            # Min-Max normalization
+            image_norm = (transformed["image"] - torch.min(transformed["image"])) / (torch.max(transformed["image"]) - torch.min(transformed["image"]))
             return {
-                "image": transformed["image"],
+                "image": image_norm,
                 "label": transformed["mask"],
                 "file": image_path,
                 "shape": list(image.shape),
@@ -72,8 +74,10 @@ class BloodVesselDataset(Dataset):
         else:
             # Transform image
             transformed = self.transform(image=image)
+            # Min-Max normalization
+            image_norm = (transformed["image"] - torch.min(transformed["image"])) / (torch.max(transformed["image"]) - torch.min(transformed["image"]))
             return {
-                "image": transformed["image"],
+                "image": image_norm,
                 "file": image_path,
                 "shape": list(image.shape),
             }
