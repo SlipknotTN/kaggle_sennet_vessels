@@ -40,8 +40,8 @@ def get_train_transform(config: ConfigParams):
             # A.HorizontalFlip(p=0.5),
             # A.VerticalFlip(p=0.5),
             # A.GridDistortion(p=0.5),
-            A.ToFloat(max_value=255),
-            ToTensorV2(),
+            # A.ToFloat(max_value=255),
+            # ToTensorV2(),
         ],
     )
 
