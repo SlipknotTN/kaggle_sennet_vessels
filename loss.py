@@ -3,16 +3,17 @@ import torch.nn as nn
 from segmentation_models_pytorch.losses.dice import DiceLoss
 
 
-# TODO: Refactor this into a class
+# TODO: Refactor this into a class and pass from_logits, log_loss and squared at denominator
 
-def dice_loss(output, target, eps=1e-7) -> torch.Tensor:
+def dice_loss(output, target, eps=1e-7, from_logits=True) -> torch.Tensor:
     """
     Dice Loss without log
 
     Args:
-        output: model prediction (logit), shape NCHW
-        target: ground truth, shape NCHW
+        output: model prediction, shape NCHW
+        target: ground truth, shape NCHW, range [0, 1]
         eps: small value to avoid dividing by zero
+        from_logits: True if input is logit, False if already in range [0, 1]
 
     Returns:
         Dice loss
@@ -21,28 +22,34 @@ def dice_loss(output, target, eps=1e-7) -> torch.Tensor:
     # Using Log-Exp as this gives more numerically stable result and does not cause vanishing gradient on
     # extreme values 0 and 1
     # The output values are not exactly the same
-    output_stable_sigmoid = nn.LogSigmoid()(output).exp()
-    intersection_mul = torch.sum(output_stable_sigmoid * target)
+    if from_logits:
+        output_stable = nn.LogSigmoid()(output).exp()
+    else:
+        output_stable = output
+    intersection_mul = torch.sum(output_stable * target)
 
     # The difference w.r.t. smp DiceLoss is the additional square as mentioned in
     # "Fundus Images using Modified U-net Convolutional Neural Network" and the fact
     # that we don't consider if the ground truth is zero (the loss is zero in that case in smp dice loss)
-    union_squared = torch.clamp_min(
-        torch.sum(output_stable_sigmoid + target),
-        eps,
-    )
-    dice_score = 2 * intersection_mul / union_squared
+    union = torch.sum(output_stable + target)
+    union_clamped = torch.clamp_min(union, eps)
+    # In case of GT and prediction empty, dice score is 1.0
+    if torch.max(output) == 0.0:
+        dice_score = torch.Tensor([1.0]).to(output.device)
+    else:
+        dice_score = 2 * intersection_mul / union_clamped
     return 1 - dice_score
 
 
-def dice_log_loss(output, target, eps=1e-7) -> torch.Tensor:
+def dice_log_loss(output, target, eps=1e-7, from_logits=True) -> torch.Tensor:
     """
     Dice Loss with log
 
     Args:
-        output: model prediction (logit), shape NCHW
-        target: ground truth, shape NCHW
+        output: model prediction, shape NCHW
+        target: ground truth, shape NCHW, range [0, 1]
         eps: small value to avoid dividing by zero
+        from_logits: True if input is logit, False if already in range [0, 1]
 
     Returns:
         Dice loss
@@ -51,29 +58,35 @@ def dice_log_loss(output, target, eps=1e-7) -> torch.Tensor:
     # Using Log-Exp as this gives more numerically stable result and does not cause vanishing gradient on
     # extreme values 0 and 1
     # The output values are not exactly the same
-    output_stable_sigmoid = nn.LogSigmoid()(output).exp()
-    intersection_mul = torch.sum(output_stable_sigmoid * target)
+    if from_logits:
+        output_stable = nn.LogSigmoid()(output).exp()
+    else:
+        output_stable = output
+    intersection_mul = torch.sum(output_stable * target)
 
     # The difference w.r.t. smp DiceLoss is the additional square as mentioned in
     # "Fundus Images using Modified U-net Convolutional Neural Network" and the fact
     # that we don't consider if the ground truth is zero (the loss is zero in that case in smp dice loss)
-    union_squared = torch.clamp_min(
-        torch.sum(output_stable_sigmoid + target),
-        eps,
-    )
-    dice_score = 2 * intersection_mul / union_squared
+    union = torch.sum(output_stable + target)
+    union_clamped = torch.clamp_min(union, eps)
+    # In case of GT and prediction empty, dice score is 1.0
+    if union == 0.0:
+        dice_score = 1.0
+    else:
+        dice_score = 2 * intersection_mul / union_clamped
     loss_batch = -torch.log(dice_score)
     return loss_batch
 
 
-def dice_log_loss_with_square(output, target, eps=1e-7) -> torch.Tensor:
+def dice_log_loss_with_square(output, target, eps=1e-7, from_logits=True) -> torch.Tensor:
     """
     Dice Loss with log and squares at denominator
 
     Args:
-        output: model prediction (logit), shape NCHW
-        target: ground truth, shape NCHW
+        output: model prediction, shape NCHW
+        target: ground truth, shape NCHW, range [0, 1]
         eps: small value to avoid dividing by zero
+        from_logits: True if input is logit, False if already in range [0, 1]
 
     Returns:
         Dice loss with squares in the formula
@@ -82,17 +95,25 @@ def dice_log_loss_with_square(output, target, eps=1e-7) -> torch.Tensor:
     # Using Log-Exp as this gives more numerically stable result and does not cause vanishing gradient on
     # extreme values 0 and 1
     # The output values are not exactly the same
-    output_stable_sigmoid = nn.LogSigmoid()(output).exp()
-    intersection_mul = torch.sum(output_stable_sigmoid * target)
+    if from_logits:
+        output_stable = nn.LogSigmoid()(output).exp()
+    else:
+        output_stable = output
+    intersection_mul = torch.sum(output_stable * target)
 
     # The difference w.r.t. smp DiceLoss is the additional square as mentioned in
     # "Fundus Images using Modified U-net Convolutional Neural Network" and the fact
     # that we don't consider if the ground truth is zero (the loss is zero in that case in smp dice loss)
-    union_squared = torch.clamp_min(
-        torch.sum(torch.square(output_stable_sigmoid) + torch.square(target)),
+    union_squared = torch.sum(torch.square(output_stable) + torch.square(target))
+    union_clamped = torch.clamp_min(
+        union_squared,
         eps,
     )
-    dice_score = 2 * intersection_mul / union_squared
+    # In case of GT and prediction empty, dice score is 1.0
+    if union_squared == 0.0:
+        dice_score = 1.0
+    else:
+        dice_score = 2 * intersection_mul / union_clamped
     loss_batch = -torch.log(dice_score)
     return loss_batch
 

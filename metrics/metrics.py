@@ -50,11 +50,11 @@ class DiceScore(Metric):
     """
     def __init__(self, to_monitor: bool):
         super().__init__(to_monitor)
-        self._name = "smp_dice_score"
+        self._name = "dice_score"
         self.dice_loss_function = dice_loss
 
     def evaluate(self, output, target) -> float:
-        return 1 - self.dice_loss_function(output, target).item()
+        return 1 - self.dice_loss_function(output, target, from_logits=False).item()
 
     def is_improved(self, new_value, old_value: Optional) -> bool:
         return new_value > old_value if old_value is not None else True
@@ -93,7 +93,7 @@ class SMPDiceLossMetric(Metric):
 
     def __init__(self, to_monitor: bool):
         super().__init__(to_monitor)
-        self._name = "dice_loss"
+        self._name = "smp_dice_loss"
         self.dice_loss_function = DiceLoss(
             mode="binary",
             log_loss=False,

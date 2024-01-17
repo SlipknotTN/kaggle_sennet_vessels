@@ -24,7 +24,7 @@ from data.dataset import BloodVesselDataset
 from data.rle import rle_encode
 from data.transforms import get_test_transform
 from metrics.fast_surface_dice.fast_surface_dice import compute_surface_dice_score
-from metrics.metrics import DiceScore
+from metrics.metrics import Metric, DiceScore
 from model import init_model
 from utils import get_device
 
@@ -134,7 +134,7 @@ def main():
     os.makedirs(os.path.join(args.output_dir, "images"), exist_ok=False)
     os.makedirs(os.path.join(args.output_dir, "3d_npy"), exist_ok=False)
 
-    dice_score_class = DiceScore(to_monitor=False)
+    dice_score_class: Metric = DiceScore(to_monitor=False)
 
     dice_2d_scores = defaultdict(list)
     single_2d_slices_scores = list()
@@ -190,6 +190,7 @@ def main():
                     if labels is not None
                     else None
                 )
+
                 prediction_raw_img = convert_to_image(predictions_raw[i], resize_to_wh)
                 prediction_thresholded_img = convert_to_image(
                     predictions_thresholded[i], resize_to_wh
@@ -321,17 +322,17 @@ def main():
                 dice_score = dice_score_class.evaluate(
                     predictions_thresholded[i], labels[i]
                 )
-                print(f"{image_path} dice_score {dice_score:.2f}")
+                print(f"{image_path} {dice_score_class.name} {dice_score:.2f}")
                 dice_2d_scores[dataset_kidney_name].append(dice_score)
                 single_2d_slices_scores.append(
-                    {"image_path": image_path, "dice_score": f"{dice_score:.2f}"}
+                    {"image_path": image_path, dice_score_class.name: f"{dice_score:.2f}"}
                 )
                 cv2.imwrite(
                     os.path.join(
                         args.output_dir,
                         "images",
                         os.path.basename(image_path)[:-4]
-                        + f"_dice_score_{dice_score:.2f}.png",
+                        + f"_{dice_score_class.name}_{dice_score:.2f}.png",
                     ),
                     all_in_one,
                 )
@@ -393,7 +394,7 @@ def main():
     with open(
         os.path.join(args.output_dir, "single_2d_slices_scores.csv"), "w"
     ) as out_fp:
-        fieldnames = ["image_path", "dice_score"]
+        fieldnames = ["image_path", dice_score_class.name]
         writer = csv.DictWriter(out_fp, fieldnames=fieldnames)
         writer.writeheader()
         for single_2d_slice_scores_row in single_2d_slices_scores:
