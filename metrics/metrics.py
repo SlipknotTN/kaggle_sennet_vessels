@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
+from loss import dice_loss
 from segmentation_models_pytorch.losses.dice import DiceLoss
 
 from config import ConfigParams
@@ -13,6 +14,16 @@ class Metric(ABC):
 
     @abstractmethod
     def evaluate(self, output, target) -> float:
+        """
+        Evaluate the metric on the model prediction and the target
+
+        Args:
+            output: output in range [0, 1] (sigmoid must be already applied)
+            target: ground truth in the range [0, 1]
+
+        Returns:
+            Metric score
+        """
         raise NotImplementedError
 
     @abstractmethod
@@ -30,12 +41,36 @@ class Metric(ABC):
 
 class DiceScore(Metric):
     """
-    1 - dice_loss (without log)
-    """
+    DiceScore based on my custom dice loss class
 
+    1 - dice_loss (without log)
+
+    The diffence with the smp score is that the score is 0
+    when the GT is 0 and the prediction no (instead of 1)
+    """
     def __init__(self, to_monitor: bool):
         super().__init__(to_monitor)
-        self._name = "dice_score"
+        self._name = "smp_dice_score"
+        self.dice_loss_function = dice_loss
+
+    def evaluate(self, output, target) -> float:
+        return 1 - self.dice_loss_function(output, target).item()
+
+    def is_improved(self, new_value, old_value: Optional) -> bool:
+        return new_value > old_value if old_value is not None else True
+
+
+class SMPDiceScore(Metric):
+    """
+    Segmentation Models PyTorch dice score based on DiceLoss class
+
+    1 - dice_loss (without log)
+
+    WARNING: dice_loss is 0 when the GT is 0 even with FP predictions
+    """
+    def __init__(self, to_monitor: bool):
+        super().__init__(to_monitor)
+        self._name = "smp_dice_score"
         self.dice_loss_function = DiceLoss(
             mode="binary",
             log_loss=False,
@@ -49,9 +84,11 @@ class DiceScore(Metric):
         return new_value > old_value if old_value is not None else True
 
 
-class DiceLossMetric(Metric):
+class SMPDiceLossMetric(Metric):
     """
-    Same of dice_loss (without log)
+    Segmentation Models PyTorch DiceLoss (without log)
+
+    WARNING: dice_loss is 0 when the GT is 0 even with FP predictions
     """
 
     def __init__(self, to_monitor: bool):
@@ -89,12 +126,17 @@ def init_metrics(config: ConfigParams) -> List[Metric]:
             if val_metric == config.val_metric_to_monitor:
                 metrics.append(DiceScore(to_monitor=True))
             else:
-                metrics.append(DiceScore(to_monitor=False))
-        elif val_metric == "dice_loss":
+                metrics.append(SMPDiceScore(to_monitor=False))
+        elif val_metric == "smp_dice_score":
             if val_metric == config.val_metric_to_monitor:
-                metrics.append(DiceLossMetric(to_monitor=True))
+                metrics.append(SMPDiceScore(to_monitor=True))
             else:
-                metrics.append(DiceLossMetric(to_monitor=False))
+                metrics.append(SMPDiceScore(to_monitor=False))
+        elif val_metric == "smp_dice_loss":
+            if val_metric == config.val_metric_to_monitor:
+                metrics.append(SMPDiceLossMetric(to_monitor=True))
+            else:
+                metrics.append(SMPDiceLossMetric(to_monitor=False))
         else:
             raise Exception(f"Metric {val_metric} unknown")
     return metrics
