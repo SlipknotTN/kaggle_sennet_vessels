@@ -115,7 +115,7 @@ def main():
     assert threshold is not None
 
     device = get_device()
-    model = init_model(config)
+    model, preprocess_function = init_model(config)
     model.load_state_dict(torch.load(args.model_path))
     model.eval()
     model.to(device)
@@ -124,6 +124,7 @@ def main():
     test_dataset = BloodVesselDataset(
         [args.input_path],
         data_transform_test,
+        preprocess_function=preprocess_function,
         dataset_with_gt=os.path.exists(os.path.join(args.input_path, "labels")),
     )
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)

@@ -1,11 +1,38 @@
 """
 Unet model from "Fundus Images using Modified U-net Convolutional Neural Network" (Afolabi, 2020)
 """
+from typing import Tuple, Any
+
 import segmentation_models_pytorch as smp
 import torch
 import torch.nn as nn
 
 from config import ConfigParams
+
+
+def preprocess_min_max(x: torch.Tensor()):
+
+    x_max = x.max()
+    x_min = x.min()
+
+    assert x_max <= 1.0 and x_min >= 0.0
+
+    return (x - x_min) / (x_max - x_min)
+
+
+def preprocess_mean_std_grayscale(x: torch.Tensor, mean: float=0.449, std: float=0.226):
+    """
+    Same preprocess_input of smp for resnext50 with imagenet weights, but adapted to grayscale
+    """
+    x_max = x.max()
+    x_min = x.min()
+
+    assert x_max <= 1.0 and x_min >= 0.0
+
+    x = x - mean
+    x = x / std
+
+    return x
 
 
 class UnetAfolabi(nn.Module):
@@ -104,14 +131,17 @@ class ConvBlock(nn.Module):
         return x
 
 
-def init_model(config: ConfigParams) -> nn.Module:
+def init_model(config: ConfigParams) -> Tuple[nn.Module, Any]:
     if config.model_name == "unet_afolabi":
         model = UnetAfolabi(batch_norm=config.model_batch_norm, dropout=config.model_dropout)
+        preprocessing_fn = preprocess_min_max
     elif config.model_smp_model is not None:
         model = init_smp_model(config)
+        preprocessing_fn = preprocess_mean_std_grayscale
+        smp.encoders.get_preprocessing_fn(config.smp_encoder, config.smp_encoder_weights)
     else:
         raise Exception("Unable to initialize the model, please check the config")
-    return model
+    return model, preprocessing_fn
 
 
 def init_smp_model(config: ConfigParams) -> nn.Module:

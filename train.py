@@ -56,7 +56,7 @@ def main():
     config = ConfigParams(args.config_path)
     print(f"Config: {json.dumps(config.__dict__, indent=4)}")
 
-    model = init_model(config)
+    model, preprocess_function = init_model(config)
     model.to(device)
     total_parameters = 0
     for parameter in model.parameters():
@@ -72,11 +72,13 @@ def main():
     train_dataset = BloodVesselDataset(
         [os.path.join(args.dataset_path, train_dir) for train_dir in config.train_dirs],
         data_transform_train,
+        preprocess_function=preprocess_function,
         dataset_with_gt=True,
     )
     val_dataset = BloodVesselDataset(
         [os.path.join(args.dataset_path, val_dir) for val_dir in config.val_dirs],
         data_transform_val,
+        preprocess_function=preprocess_function,
         dataset_with_gt=True,
     )
     train_dataloader = DataLoader(
@@ -214,9 +216,11 @@ def main():
         writer.add_scalar(
             "train/loss_epoch_avg", train_loss, global_step=(epoch_id + 1)
         )
+        training_metrics[epoch_id + 1] = {"train_loss": train_loss}
 
         # Iterate on validation batches
-        # TODO: Better val without it?!
+        # The eval model introduces a different w.r.t. training loss which can be significant
+        # while the training is not yet stable
         model.eval()
         print(f"Epoch: {epoch_id + 1}, calculating validation metrics...")
         with torch.no_grad():
@@ -237,8 +241,9 @@ def main():
 
                 # calculate the metrics on validation batch
                 for single_val_metric in val_metrics:
+                    # TODO: Restore preds_sigmoid
                     metric_value = single_val_metric.evaluate(
-                        preds_sigmoid, labels_device
+                        preds_logits, labels_device
                     )
                     val_total_metrics[single_val_metric.name] += metric_value
 
@@ -260,8 +265,6 @@ def main():
                         labels[0],
                         preds_sigmoid[0],
                     )
-
-            training_metrics[epoch_id + 1] = {"train_loss": train_loss}
 
             early_stop = False
             for single_metric in val_metrics:
@@ -294,7 +297,7 @@ def main():
                         output_model_filename = (
                             f"{args.output_dir}/{config.model_name}_{epoch_id + 1}.pt"
                         )
-                        torch.save(model.state_dict(), output_model_filename)
+                        #torch.save(model.state_dict(), output_model_filename)
                         print(f"Model saved to {output_model_filename}")
                         consecutive_no_improvements = 0
                     else:

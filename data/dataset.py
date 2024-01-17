@@ -8,9 +8,10 @@ from tqdm import tqdm
 
 
 class BloodVesselDataset(Dataset):
-    def __init__(self, selected_dirs, transform, dataset_with_gt):
+    def __init__(self, selected_dirs, transform, preprocess_function, dataset_with_gt):
         self.selected_dirs = selected_dirs
         self.transform = transform
+        self.preprocess_function = preprocess_function
         self.dataset_with_gt = dataset_with_gt
         self.samples = []
         for selected_dir in selected_dirs:
@@ -62,10 +63,9 @@ class BloodVesselDataset(Dataset):
             # Add the channel dimension to the label
             if len(transformed["mask"].shape) == 2:
                 transformed["mask"] = torch.unsqueeze(transformed["mask"], dim=0)
-            # Min-Max normalization
-            image_norm = (transformed["image"] - torch.min(transformed["image"])) / (torch.max(transformed["image"]) - torch.min(transformed["image"]))
+            image_preprocessed = self.preprocess_function(transformed["image"])
             return {
-                "image": image_norm,
+                "image": image_preprocessed,
                 "label": transformed["mask"],
                 "file": image_path,
                 "shape": list(image.shape),
@@ -74,10 +74,9 @@ class BloodVesselDataset(Dataset):
         else:
             # Transform image
             transformed = self.transform(image=image)
-            # Min-Max normalization
-            image_norm = (transformed["image"] - torch.min(transformed["image"])) / (torch.max(transformed["image"]) - torch.min(transformed["image"]))
+            image_preprocessed = self.preprocess_function(transformed["image"])
             return {
-                "image": image_norm,
+                "image": image_preprocessed,
                 "file": image_path,
                 "shape": list(image.shape),
             }
