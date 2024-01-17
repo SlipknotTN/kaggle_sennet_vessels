@@ -6,19 +6,24 @@ from config import ConfigParams
 
 def get_train_transform(config: ConfigParams):
     return A.Compose(
-        # 2.5d augmentation
         [
-            # A.Rotate(limit=45, p=0.5),
-            # A.RandomScale(scale_limit=(0.8, 1.25), p=0.5),
-            # A.RandomCrop(config.model_input_size, config.model_input_size, p=1),
-            # A.RandomGamma(p=0.75),
-            # A.RandomBrightnessContrast(p=0.5),
-            # A.GaussianBlur(p=0.5),
-            # A.MotionBlur(p=0.5),
-            # A.GridDistortion(num_steps=5, distort_limit=0.3, p=0.5),
-            A.Resize(config.model_input_size, config.model_input_size),
+            # 2.5d augmentation
+            A.Rotate(limit=45, p=0.5),
+            A.RandomScale(scale_limit=(0.8, 1.25), p=0.5),
+            A.RandomCrop(config.model_input_size, config.model_input_size, p=1),
+            A.RandomGamma(p=0.75),
+            A.RandomBrightnessContrast(p=0.5),
+            A.GaussianBlur(p=0.5),
+            A.MotionBlur(p=0.5),
+            A.GridDistortion(num_steps=5, distort_limit=0.3, p=0.5),
             A.ToFloat(max_value=255),
             ToTensorV2(transpose_mask=True),
+
+            # Overfit test
+            # A.Resize(config.model_input_size, config.model_input_size),
+            # A.ToFloat(max_value=255),
+            # ToTensorV2(transpose_mask=True),
+
             # My Aug
             # A.Rotate(limit=180, p=0.75),
             # A.Resize(config.train_resize_before_crop, config.train_resize_before_crop),
@@ -34,12 +39,11 @@ def get_train_transform(config: ConfigParams):
             # # This is applied only to the image
             # # TODO: Maybe too much, but at least it predicts something on kidney_3
             # A.InvertImg(p=0.5),
-            # #A.HorizontalFlip(p=0.5),
-            # #A.VerticalFlip(p=0.5),
-            # # A.GridDistortion(p=0.5),
-            # # This is applied only to the image
-            # A.ToFloat(max_value=255),
-            # ToTensorV2(),
+            # A.HorizontalFlip(p=0.5),
+            # A.VerticalFlip(p=0.5),
+            # A.GridDistortion(p=0.5),
+            A.ToFloat(max_value=255),
+            ToTensorV2(),
         ],
     )
 
