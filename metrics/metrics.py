@@ -37,7 +37,9 @@ class DiceScore(Metric):
         super().__init__(to_monitor)
         self._name = "dice_score"
         self.dice_loss_function = DiceLoss(
-            mode="binary", log_loss=False, from_logits=False,
+            mode="binary",
+            log_loss=False,
+            from_logits=False,
         )
 
     def evaluate(self, output, target) -> float:
@@ -49,14 +51,16 @@ class DiceScore(Metric):
 
 class DiceLossMetric(Metric):
     """
-    Same of dice_loss (without log and with logits INPUT!!!)
+    Same of dice_loss (without log)
     """
-    # TODO: Change it to sigmoid for better alignment after the tests
+
     def __init__(self, to_monitor: bool):
         super().__init__(to_monitor)
         self._name = "dice_loss"
         self.dice_loss_function = DiceLoss(
-            mode="binary", log_loss=False, from_logits=True,
+            mode="binary",
+            log_loss=False,
+            from_logits=False,
         )
 
     def evaluate(self, output, target) -> float:

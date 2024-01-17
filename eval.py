@@ -231,9 +231,10 @@ def main():
                     predictions_df_dict[dataset_kidney_name] = pd.DataFrame(
                         columns=["id", "rle", "width", "height", "image_id", "slice_id"]
                     )
-                predictions_df_dict[dataset_kidney_name] = pd.concat([predictions_df_dict[
-                    dataset_kidney_name
-                ], prediction_row_df], ignore_index=True)
+                predictions_df_dict[dataset_kidney_name] = pd.concat(
+                    [predictions_df_dict[dataset_kidney_name], prediction_row_df],
+                    ignore_index=True,
+                )
                 predictions_for_3d[dataset_kidney_name].append(
                     prediction_upscaled.astype(bool)
                 )
@@ -263,9 +264,10 @@ def main():
                     labels_df_dict[dataset_kidney_name] = pd.DataFrame(
                         columns=["id", "rle", "width", "height", "image_id", "slice_id"]
                     )
-                labels_df_dict[dataset_kidney_name] = pd.concat([labels_df_dict[
-                    dataset_kidney_name
-                ], label_row_df], ignore_index=True)
+                labels_df_dict[dataset_kidney_name] = pd.concat(
+                    [labels_df_dict[dataset_kidney_name], label_row_df],
+                    ignore_index=True,
+                )
                 labels_for_3d[dataset_kidney_name].append(label_upscaled.astype(bool))
 
                 if label_img is not None:

@@ -137,7 +137,6 @@ def main():
     consecutive_no_improvements = 0
 
     for epoch_id in tqdm(range(config.epochs), desc="epoch"):
-
         model.train(True)
 
         train_total_loss = 0.0
@@ -297,7 +296,7 @@ def main():
                         output_model_filename = (
                             f"{args.output_dir}/{config.model_name}_{epoch_id + 1}.pt"
                         )
-                        #torch.save(model.state_dict(), output_model_filename)
+                        torch.save(model.state_dict(), output_model_filename)
                         print(f"Model saved to {output_model_filename}")
                         consecutive_no_improvements = 0
                     else:
