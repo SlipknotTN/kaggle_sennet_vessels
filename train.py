@@ -240,9 +240,8 @@ def main():
 
                 # calculate the metrics on validation batch
                 for single_val_metric in val_metrics:
-                    # TODO: Restore preds_sigmoid
                     metric_value = single_val_metric.evaluate(
-                        preds_logits, labels_device
+                        preds_sigmoid, labels_device
                     )
                     val_total_metrics[single_val_metric.name] += metric_value
 
