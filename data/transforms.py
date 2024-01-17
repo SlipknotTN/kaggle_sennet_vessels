@@ -18,12 +18,10 @@ def get_train_transform(config: ConfigParams):
             A.GridDistortion(num_steps=5, distort_limit=0.3, p=0.5),
             A.ToFloat(max_value=255),
             ToTensorV2(transpose_mask=True),
-
             # Overfit test
             # A.Resize(config.model_input_size, config.model_input_size),
             # A.ToFloat(max_value=255),
             # ToTensorV2(transpose_mask=True),
-
             # My Aug
             # A.Rotate(limit=180, p=0.75),
             # A.Resize(config.train_resize_before_crop, config.train_resize_before_crop),
