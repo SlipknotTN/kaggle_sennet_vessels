@@ -1,6 +1,3 @@
-"""
-Unet model from "Fundus Images using Modified U-net Convolutional Neural Network" (Afolabi, 2020)
-"""
 from typing import Any, Tuple
 
 import segmentation_models_pytorch as smp
@@ -37,6 +34,9 @@ def preprocess_mean_std_grayscale(
 
 
 class UnetAfolabi(nn.Module):
+    """
+    Unet model from "Fundus Images using Modified U-net Convolutional Neural Network" (Afolabi, 2020)
+    """
     def __init__(self, batch_norm: bool = True, dropout: bool = True):
         super(UnetAfolabi, self).__init__()
         self.batch_norm = batch_norm
@@ -152,6 +152,18 @@ class ConvBlock(nn.Module):
         return x
 
 
+def init_smp_model(config: ConfigParams) -> nn.Module:
+    if config.model_smp_model != "unet":
+        raise Exception("Only unet model is supported")
+    model = smp.Unet(
+        encoder_name=config.smp_encoder,  # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+        encoder_weights=config.smp_encoder_weights,  # use `imagenet` pre-trained weights for encoder initialization
+        in_channels=config.model_input_channels,  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+        classes=1,  # model output channels (number of classes in your dataset)
+    )
+    return model
+
+
 def init_model(config: ConfigParams) -> Tuple[nn.Module, Any]:
     if config.model_name == "unet_afolabi":
         model = UnetAfolabi(
@@ -167,15 +179,3 @@ def init_model(config: ConfigParams) -> Tuple[nn.Module, Any]:
     else:
         raise Exception("Unable to initialize the model, please check the config")
     return model, preprocessing_fn
-
-
-def init_smp_model(config: ConfigParams) -> nn.Module:
-    if config.model_smp_model != "unet":
-        raise Exception("Only unet model is supported")
-    model = smp.Unet(
-        encoder_name=config.smp_encoder,  # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
-        encoder_weights=config.smp_encoder_weights,  # use `imagenet` pre-trained weights for encoder initialization
-        in_channels=config.model_input_channels,  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
-        classes=1,  # model output channels (number of classes in your dataset)
-    )
-    return model

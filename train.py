@@ -239,11 +239,11 @@ def main():
                 preds_sigmoid = nn.Sigmoid()(preds_logits)
 
                 # calculate the metrics on validation batch
-                for single_val_metric in val_metrics:
-                    metric_value = single_val_metric.evaluate(
+                for single_metric in val_metrics:
+                    metric_value = single_metric.evaluate(
                         preds_sigmoid, labels_device
                     )
-                    val_total_metrics[single_val_metric.name] += metric_value
+                    val_total_metrics[single_metric.name] += metric_value
 
                 # TODO: Calculate 3D surface dice metric (target of the competition),
                 # but this works only for single kidneys

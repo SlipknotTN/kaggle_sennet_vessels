@@ -120,23 +120,23 @@ def init_metrics(config: ConfigParams) -> List[Metric]:
     assert (
         config.val_metric_to_monitor in config.val_metrics_to_log
     ), f"config.val_metrics_monitored {config.val_metric_to_monitor} not present in config.val_metrics_logged"
-    metrics = []
-    for val_metric in config.val_metrics_to_log:
-        if val_metric == "dice_score":
-            if val_metric == config.val_metric_to_monitor:
-                metrics.append(DiceScore(to_monitor=True))
+    metrics_list = []
+    for val_metric_name in config.val_metrics_to_log:
+        if val_metric_name == "dice_score":
+            if val_metric_name == config.val_metric_to_monitor:
+                metrics_list.append(DiceScore(to_monitor=True))
             else:
-                metrics.append(SMPDiceScore(to_monitor=False))
-        elif val_metric == "smp_dice_score":
-            if val_metric == config.val_metric_to_monitor:
-                metrics.append(SMPDiceScore(to_monitor=True))
+                metrics_list.append(SMPDiceScore(to_monitor=False))
+        elif val_metric_name == "smp_dice_score":
+            if val_metric_name == config.val_metric_to_monitor:
+                metrics_list.append(SMPDiceScore(to_monitor=True))
             else:
-                metrics.append(SMPDiceScore(to_monitor=False))
-        elif val_metric == "smp_dice_loss":
-            if val_metric == config.val_metric_to_monitor:
-                metrics.append(SMPDiceLossMetric(to_monitor=True))
+                metrics_list.append(SMPDiceScore(to_monitor=False))
+        elif val_metric_name == "smp_dice_loss":
+            if val_metric_name == config.val_metric_to_monitor:
+                metrics_list.append(SMPDiceLossMetric(to_monitor=True))
             else:
-                metrics.append(SMPDiceLossMetric(to_monitor=False))
+                metrics_list.append(SMPDiceLossMetric(to_monitor=False))
         else:
-            raise Exception(f"Metric {val_metric} unknown")
-    return metrics
+            raise Exception(f"Metric {val_metric_name} unknown")
+    return metrics_list
