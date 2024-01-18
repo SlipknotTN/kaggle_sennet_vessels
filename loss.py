@@ -34,7 +34,7 @@ def dice_loss(output, target, eps=1e-7, from_logits=True) -> torch.Tensor:
     union = torch.sum(output_stable + target)
     union_clamped = torch.clamp_min(union, eps)
     # In case of GT and prediction empty, dice score is 1.0
-    if torch.max(output) == 0.0:
+    if union == 0.0:
         dice_score = torch.Tensor([1.0]).to(output.device)
     else:
         dice_score = 2 * intersection_mul / union_clamped
