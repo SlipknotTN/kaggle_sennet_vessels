@@ -49,8 +49,8 @@ class ConfigParams(object):
         self.model_input_channels = config.getint("MODEL", "input_channels", fallback=1)
         self.model_smp_model = config.get("MODEL", "smp_model", fallback=None)
         if self.model_smp_model:
-            self.smp_encoder = config.get("MODEL", "smp_encoder")
-            self.smp_encoder_weights = config.get(
+            self.model_smp_encoder = config.get("MODEL", "smp_encoder")
+            self.model_smp_encoder_weights = config.get(
                 "MODEL", "smp_encoder_weights", fallback=None
             )
         if self.model_name == "unet_afolabi":

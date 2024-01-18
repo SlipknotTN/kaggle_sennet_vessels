@@ -105,20 +105,19 @@ def main():
     # Train loop
     os.makedirs(args.output_dir, exist_ok=True)
     writer = SummaryWriter(logdir=args.output_dir)
-    # TODO: Call model.eval() for add_graph
-    # writer.add_graph(
-    #     model,
-    #     torch.zeros(
-    #         [
-    #             config.train_batch_size,
-    #             1,
-    #             config.model_input_size,
-    #             config.model_input_size,
-    #         ],
-    #         dtype=torch.float32,
-    #         device=device,
-    #     ),
-    # )
+    writer.add_graph(
+        model.eval(),
+        torch.zeros(
+            [
+                config.train_batch_size,
+                1,
+                config.model_input_size,
+                config.model_input_size,
+            ],
+            dtype=torch.float32,
+            device=device,
+        ),
+    )
 
     loss_criterion = init_loss(config)
     optimizer = init_optimizer(config, model)

@@ -157,8 +157,8 @@ def init_smp_model(config: ConfigParams) -> nn.Module:
     if config.model_smp_model != "unet":
         raise Exception("Only unet model is supported")
     model = smp.Unet(
-        encoder_name=config.smp_encoder,  # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
-        encoder_weights=config.smp_encoder_weights,  # use `imagenet` pre-trained weights for encoder initialization
+        encoder_name=config.model_smp_encoder,  # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+        encoder_weights=config.model_smp_encoder_weights,  # use `imagenet` pre-trained weights for encoder initialization
         in_channels=config.model_input_channels,  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
         classes=1,  # model output channels (number of classes in your dataset)
     )
@@ -175,7 +175,7 @@ def init_model(config: ConfigParams) -> Tuple[nn.Module, Any]:
         model = init_smp_model(config)
         preprocessing_fn = preprocess_mean_std_grayscale
         smp.encoders.get_preprocessing_fn(
-            config.smp_encoder, config.smp_encoder_weights
+            config.model_smp_encoder, config.model_smp_encoder_weights
         )
     else:
         raise Exception("Unable to initialize the model, please check the config")
