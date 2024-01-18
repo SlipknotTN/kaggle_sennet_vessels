@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from loss import dice_loss
 from segmentation_models_pytorch.losses.dice import DiceLoss
 
 from config import ConfigParams
+from loss import dice_loss
 
 
 class Metric(ABC):
@@ -48,6 +48,7 @@ class DiceScore(Metric):
     The diffence with the smp score is that the score is 0
     when the GT is 0 and the prediction no (instead of 1)
     """
+
     def __init__(self, to_monitor: bool):
         super().__init__(to_monitor)
         self._name = "dice_score"
@@ -68,6 +69,7 @@ class SMPDiceScore(Metric):
 
     WARNING: dice_loss is 0 when the GT is 0 even with FP predictions
     """
+
     def __init__(self, to_monitor: bool):
         super().__init__(to_monitor)
         self._name = "smp_dice_score"

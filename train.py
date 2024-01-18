@@ -240,9 +240,7 @@ def main():
 
                 # calculate the metrics on validation batch
                 for single_metric in val_metrics:
-                    metric_value = single_metric.evaluate(
-                        preds_sigmoid, labels_device
-                    )
+                    metric_value = single_metric.evaluate(preds_sigmoid, labels_device)
                     val_total_metrics[single_metric.name] += metric_value
 
                 # TODO: Calculate 3D surface dice metric (target of the competition),

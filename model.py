@@ -37,6 +37,7 @@ class UnetAfolabi(nn.Module):
     """
     Unet model from "Fundus Images using Modified U-net Convolutional Neural Network" (Afolabi, 2020)
     """
+
     def __init__(self, batch_norm: bool = True, dropout: bool = True):
         super(UnetAfolabi, self).__init__()
         self.batch_norm = batch_norm

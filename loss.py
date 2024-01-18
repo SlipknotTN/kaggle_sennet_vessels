@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 from segmentation_models_pytorch.losses.dice import DiceLoss
 
-
 # TODO: Refactor this into a class and pass from_logits, log_loss and squared at denominator
+
 
 def dice_loss(output, target, eps=1e-7, from_logits=True) -> torch.Tensor:
     """
@@ -78,7 +78,9 @@ def dice_log_loss(output, target, eps=1e-7, from_logits=True) -> torch.Tensor:
     return loss_batch
 
 
-def dice_log_loss_with_square(output, target, eps=1e-7, from_logits=True) -> torch.Tensor:
+def dice_log_loss_with_square(
+    output, target, eps=1e-7, from_logits=True
+) -> torch.Tensor:
     """
     Dice Loss with log and squares at denominator
 

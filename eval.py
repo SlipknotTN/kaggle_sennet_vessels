@@ -23,8 +23,9 @@ from config import ConfigParams
 from data.dataset import BloodVesselDataset
 from data.rle import rle_encode
 from data.transforms import get_test_transform
-from metrics.fast_surface_dice.fast_surface_dice import compute_surface_dice_score
-from metrics.metrics import Metric, DiceScore
+from metrics.fast_surface_dice.fast_surface_dice import \
+    compute_surface_dice_score
+from metrics.metrics import DiceScore, Metric
 from model import init_model
 from utils import get_device
 
@@ -325,7 +326,10 @@ def main():
                 print(f"{image_path} {dice_score_class.name} {dice_score:.2f}")
                 dice_2d_scores[dataset_kidney_name].append(dice_score)
                 single_2d_slices_scores.append(
-                    {"image_path": image_path, dice_score_class.name: f"{dice_score:.2f}"}
+                    {
+                        "image_path": image_path,
+                        dice_score_class.name: f"{dice_score:.2f}",
+                    }
                 )
                 cv2.imwrite(
                     os.path.join(
