@@ -59,7 +59,10 @@ def do_parsing():
         "--config_path", required=True, type=str, help="Configuration filepath"
     )
     parser.add_argument(
-        "--batch_size", required=False, type=int, help="Evaluation batch size"
+        "--batch_size", required=False, type=int, help="Evaluation batch size, otherwise training one is used"
+    )
+    parser.add_argument(
+        "--inference_input_size", required=False, type=int, help="Evaluation input size, otherwise training one is used"
     )
     parser.add_argument(
         "--threshold",
@@ -120,7 +123,7 @@ def main():
     model.eval()
     model.to(device)
 
-    data_transform_test = get_test_transform(config)
+    data_transform_test = get_test_transform(config, args.inference_input_size)
     test_dataset = BloodVesselDataset(
         [args.input_path],
         data_transform_test,
@@ -185,6 +188,7 @@ def main():
                 original_shape_wh = (original_image_width, original_image_height)
                 resize_to_wh = original_shape_wh if args.rescale else None
 
+                # TODO: Reload from file to avoid issues with normalization
                 image = convert_to_image(images[i], resize_to_wh)
                 label_img = (
                     convert_to_image(labels[i], resize_to_wh)

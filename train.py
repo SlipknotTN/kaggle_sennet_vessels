@@ -23,7 +23,7 @@ from utils import get_device
 def add_image_sample_to_tensorboard(
     writer, tag_prefix, global_step, image_sample, label_sample, pred_sample
 ):
-    # TODO: Which is the range of the prediction? It seems to be 0 or 1
+    # TODO: Fix image range, inverse preprocess function
     writer.add_image(f"{tag_prefix}/image", image_sample, global_step=global_step)
     writer.add_image(f"{tag_prefix}/label", label_sample, global_step=global_step)
     writer.add_image(f"{tag_prefix}/pred", pred_sample, global_step=global_step)
@@ -111,8 +111,8 @@ def main():
             [
                 config.train_batch_size,
                 1,
-                config.model_input_size,
-                config.model_input_size,
+                config.model_train_input_size,
+                config.model_train_input_size,
             ],
             dtype=torch.float32,
             device=device,

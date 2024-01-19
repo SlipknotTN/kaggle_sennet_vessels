@@ -49,17 +49,18 @@ def get_train_transform(config: ConfigParams):
 def get_val_transform(config: ConfigParams):
     return A.Compose(
         [
-            A.Resize(config.model_input_size, config.model_input_size),
+            A.Resize(config.model_train_input_size, config.model_train_input_size),
             A.ToFloat(max_value=255),
             ToTensorV2(),
         ],
     )
 
 
-def get_test_transform(config: ConfigParams):
+def get_test_transform(config: ConfigParams, inference_input_size=None):
+    input_size = config.model_train_input_size if inference_input_size is None else inference_input_size
     return A.Compose(
         [
-            A.Resize(config.model_input_size, config.model_input_size),
+            A.Resize(input_size, input_size),
             A.ToFloat(max_value=255),
             ToTensorV2(),
         ],
