@@ -174,9 +174,6 @@ def init_model(config: ConfigParams) -> Tuple[nn.Module, Any]:
     elif config.model_smp_model is not None:
         model = init_smp_model(config)
         preprocessing_fn = preprocess_mean_std_grayscale
-        smp.encoders.get_preprocessing_fn(
-            config.model_smp_encoder, config.model_smp_encoder_weights
-        )
     else:
         raise Exception("Unable to initialize the model, please check the config")
     return model, preprocessing_fn

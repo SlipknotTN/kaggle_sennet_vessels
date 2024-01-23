@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from segmentation_models_pytorch.losses.dice import DiceLoss
+from segmentation_models_pytorch.losses.focal import FocalLoss
 
 # TODO: Refactor this into a class and pass from_logits, log_loss and squared at denominator
 
@@ -133,6 +134,8 @@ def init_loss(config):
         criterion = DiceLoss(mode="binary", log_loss=False, from_logits=True)
     elif config.loss_function == "smp_log_dice_loss":
         criterion = DiceLoss(mode="binary", log_loss=True, from_logits=True)
+    elif config.loss_function == "smp_focal_loss":
+        criterion = FocalLoss(mode="binary", alpha=config.focal_loss_alpha, gamma=config.focal_loss_gamma)
     else:
         raise Exception("Loss function not set, please check the config")
     return criterion

@@ -14,6 +14,9 @@ class ConfigParams(object):
         )
         self.epochs = config.getint("TRAIN", "epochs")
         self.loss_function = config.get("TRAIN", "loss_function")
+        if self.loss_function == "smp_focal_loss":
+            self.focal_loss_alpha = config.getfloat("FOCAL_LOSS", "alpha", fallback=None)
+            self.focal_loss_gamma = config.getfloat("FOCAL_LOSS", "gamma", fallback=None)
         self.optimizer = config.get("TRAIN", "optimizer")
         self.patience = config.getint("TRAIN", "patience", fallback=self.epochs)
         self.num_batches_train_loss_aggregation = config.getint(
