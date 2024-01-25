@@ -40,6 +40,7 @@ class ConfigParams(object):
         assert (
             self.val_metric_to_monitor in self.val_metrics_to_log
         ), f"val_metric_to_monitor {self.val_metric_to_monitor} not present in val_metrics_to_log"
+        self.seed = config.getint("TRAIN", "seed", fallback=23)
 
         # Dataset
         self.train_dirs = json.loads(config.get("DATASET", "train_dirs"))

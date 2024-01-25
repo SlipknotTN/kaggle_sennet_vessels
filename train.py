@@ -17,7 +17,7 @@ from loss import init_loss
 from metrics.metrics import init_metrics
 from model import init_model
 from optimizer import init_optimizer
-from utils import get_device
+from utils import get_device, set_seed
 
 
 def add_image_sample_to_tensorboard(
@@ -55,6 +55,7 @@ def main():
 
     config = ConfigParams(args.config_path)
     print(f"Config: {json.dumps(config.__dict__, indent=4)}")
+    set_seed(config.seed)
 
     model, preprocess_function = init_model(config)
     model.to(device)
