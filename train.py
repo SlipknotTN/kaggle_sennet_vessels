@@ -21,14 +21,22 @@ from utils import get_device, set_seed
 
 
 def add_image_sample_to_tensorboard(
-    writer: SummaryWriter, tag_prefix: str, global_step: int,
-        image_sample: torch.Tensor, label_sample: torch.Tensor, pred_sample: torch.Tensor
+    writer: SummaryWriter,
+    tag_prefix: str,
+    global_step: int,
+    image_sample: torch.Tensor,
+    label_sample: torch.Tensor,
+    pred_sample: torch.Tensor,
 ):
     # Create a single image, each input is already in the [0.0, 1.0] range
     # with CHW shape (also when grayscale)
     # TODO: Add label - prediction diff
-    all_in_one_image = torch.concat([image_sample.to("cpu"), label_sample.to("cpu"), pred_sample.to("cpu")], dim=-1)
-    writer.add_image(f"{tag_prefix}/image_label_pred", all_in_one_image, global_step=global_step)
+    all_in_one_image = torch.concat(
+        [image_sample.to("cpu"), label_sample.to("cpu"), pred_sample.to("cpu")], dim=-1
+    )
+    writer.add_image(
+        f"{tag_prefix}/image_label_pred", all_in_one_image, global_step=global_step
+    )
 
 
 def do_parsing():

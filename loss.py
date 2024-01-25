@@ -135,7 +135,9 @@ def init_loss(config):
     elif config.loss_function == "smp_log_dice_loss":
         criterion = DiceLoss(mode="binary", log_loss=True, from_logits=True)
     elif config.loss_function == "smp_focal_loss":
-        criterion = FocalLoss(mode="binary", alpha=config.focal_loss_alpha, gamma=config.focal_loss_gamma)
+        criterion = FocalLoss(
+            mode="binary", alpha=config.focal_loss_alpha, gamma=config.focal_loss_gamma
+        )
     else:
         raise Exception("Loss function not set, please check the config")
     return criterion

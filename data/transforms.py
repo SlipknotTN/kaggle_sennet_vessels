@@ -10,7 +10,9 @@ def get_train_transform(config: ConfigParams):
             # 2.5d augmentation
             A.Rotate(limit=45, p=0.5),
             A.RandomScale(scale_limit=(0.8, 1.25), p=0.5),
-            A.RandomCrop(config.model_train_input_size, config.model_train_input_size, p=1),
+            A.RandomCrop(
+                config.model_train_input_size, config.model_train_input_size, p=1
+            ),
             A.RandomGamma(p=0.75),
             A.RandomBrightnessContrast(p=0.5),
             A.GaussianBlur(p=0.5),
@@ -57,7 +59,11 @@ def get_val_transform(config: ConfigParams):
 
 
 def get_test_transform(config: ConfigParams, inference_input_size=None):
-    input_size = config.model_train_input_size if inference_input_size is None else inference_input_size
+    input_size = (
+        config.model_train_input_size
+        if inference_input_size is None
+        else inference_input_size
+    )
     return A.Compose(
         [
             A.Resize(input_size, input_size),

@@ -23,8 +23,7 @@ from config import ConfigParams
 from data.dataset import BloodVesselDataset
 from data.rle import rle_encode
 from data.transforms import get_test_transform
-from metrics.fast_surface_dice.fast_surface_dice import \
-    compute_surface_dice_score
+from metrics.fast_surface_dice.fast_surface_dice import compute_surface_dice_score
 from metrics.metrics import DiceScore, Metric
 from model import init_model
 from utils import get_device
@@ -60,10 +59,16 @@ def do_parsing():
         "--config_path", required=True, type=str, help="Configuration filepath"
     )
     parser.add_argument(
-        "--batch_size", required=False, type=int, help="Evaluation batch size, otherwise training one is used"
+        "--batch_size",
+        required=False,
+        type=int,
+        help="Evaluation batch size, otherwise training one is used",
     )
     parser.add_argument(
-        "--inference_input_size", required=False, type=int, help="Evaluation input size, otherwise training one is used"
+        "--inference_input_size",
+        required=False,
+        type=int,
+        help="Evaluation input size, otherwise training one is used",
     )
     parser.add_argument(
         "--threshold",

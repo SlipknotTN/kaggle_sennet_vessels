@@ -16,7 +16,9 @@ def preprocess_min_max(x: torch.Tensor):
     return (x - x_min) / (x_max - x_min)
 
 
-def inverse_preprocess_min_max(x_norm: torch.Tensor, new_min: float = 0.0, new_max: float = 1.0):
+def inverse_preprocess_min_max(
+    x_norm: torch.Tensor, new_min: float = 0.0, new_max: float = 1.0
+):
     """
     Operation to restore an normalized input to the original range in [0.0, 1.0]
     corresponding to [0, 255] as uint8. The operation with default values has no actions
@@ -47,7 +49,9 @@ def preprocess_mean_std_grayscale(
     return x
 
 
-def inverse_preprocess_mean_str_grayscale(x_norm: torch.Tensor, mean: float = 0.449, std: float = 0.226):
+def inverse_preprocess_mean_str_grayscale(
+    x_norm: torch.Tensor, mean: float = 0.449, std: float = 0.226
+):
     """
     Operation to restore a normalized input to the original range in [0.0, 1.0]
     corresponding to [0, 255] as uint8
