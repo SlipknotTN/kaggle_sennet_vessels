@@ -7,13 +7,27 @@ import torch.nn as nn
 from config import ConfigParams
 
 
-def preprocess_min_max(x: torch.Tensor()):
+def preprocess_min_max(x: torch.Tensor):
     x_max = x.max()
     x_min = x.min()
 
     assert x_max <= 1.0 and x_min >= 0.0
 
     return (x - x_min) / (x_max - x_min)
+
+
+def inverse_preprocess_min_max(x_norm: torch.Tensor, new_min: float = 0.0, new_max: float = 1.0):
+    """
+    Operation to restore an normalized input to the original range in [0.0, 1.0]
+    corresponding to [0, 255] as uint8. The operation with default values has no actions
+    and you need original max and min to restore the original image
+    """
+    x = x_norm * (new_max - new_min) + new_min
+    x_max = x.max()
+    x_min = x.min()
+    # TODO: Check closeness to new_max and new_min
+    assert x_max <= new_max and x_min >= new_min
+    return x
 
 
 def preprocess_mean_std_grayscale(
@@ -29,6 +43,21 @@ def preprocess_mean_std_grayscale(
 
     x = x - mean
     x = x / std
+
+    return x
+
+
+def inverse_preprocess_mean_str_grayscale(x_norm: torch.Tensor, mean: float = 0.449, std: float = 0.226):
+    """
+    Operation to restore a normalized input to the original range in [0.0, 1.0]
+    corresponding to [0, 255] as uint8
+    """
+    x = x_norm * std
+    x = x + mean
+    x_max = x.max()
+    x_min = x.min()
+
+    assert x_max <= 1.0 and x_min >= 0.0
 
     return x
 
@@ -165,15 +194,17 @@ def init_smp_model(config: ConfigParams) -> nn.Module:
     return model
 
 
-def init_model(config: ConfigParams) -> Tuple[nn.Module, Any]:
+def init_model(config: ConfigParams) -> Tuple[nn.Module, Any, Any]:
     if config.model_name == "unet_afolabi":
         model = UnetAfolabi(
             batch_norm=config.model_batch_norm, dropout=config.model_dropout
         )
         preprocessing_fn = preprocess_min_max
+        inverse_preprocessing_fn = inverse_preprocess_min_max
     elif config.model_smp_model is not None:
         model = init_smp_model(config)
         preprocessing_fn = preprocess_mean_std_grayscale
+        inverse_preprocessing_fn = inverse_preprocess_mean_str_grayscale
     else:
         raise Exception("Unable to initialize the model, please check the config")
-    return model, preprocessing_fn
+    return model, preprocessing_fn, inverse_preprocessing_fn

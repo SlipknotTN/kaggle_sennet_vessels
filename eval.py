@@ -43,6 +43,7 @@ def convert_to_image(
     Returns:
         Equivalent image HWC uint8 range [0, 255]
     """
+    assert tensor.max() <= 1.0 and tensor.min() >= 0.0
     tensor_npy = tensor.cpu().data.numpy()
     image = np.transpose((tensor_npy * 255.0).astype(np.uint8), (1, 2, 0))
     if resize_to_wh:
@@ -118,7 +119,7 @@ def main():
     assert threshold is not None
 
     device = get_device()
-    model, preprocess_function = init_model(config)
+    model, preprocess_function, inverse_preprocess_function = init_model(config)
     model.load_state_dict(torch.load(args.model_path))
     model.eval()
     model.to(device)
@@ -188,8 +189,9 @@ def main():
                 original_shape_wh = (original_image_width, original_image_height)
                 resize_to_wh = original_shape_wh if args.rescale else None
 
-                # TODO: Reload from file to avoid issues with normalization
-                image = convert_to_image(images[i], resize_to_wh)
+                # Restore original image values range
+                original_image = inverse_preprocess_function(x_norm=images[i])
+                image = convert_to_image(original_image, resize_to_wh)
                 label_img = (
                     convert_to_image(labels[i], resize_to_wh)
                     if labels is not None

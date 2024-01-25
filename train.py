@@ -21,12 +21,14 @@ from utils import get_device, set_seed
 
 
 def add_image_sample_to_tensorboard(
-    writer, tag_prefix, global_step, image_sample, label_sample, pred_sample
+    writer: SummaryWriter, tag_prefix: str, global_step: int,
+        image_sample: torch.Tensor, label_sample: torch.Tensor, pred_sample: torch.Tensor
 ):
-    # TODO: Fix image range, inverse preprocess function
-    writer.add_image(f"{tag_prefix}/image", image_sample, global_step=global_step)
-    writer.add_image(f"{tag_prefix}/label", label_sample, global_step=global_step)
-    writer.add_image(f"{tag_prefix}/pred", pred_sample, global_step=global_step)
+    # Create a single image, each input is already in the [0.0, 1.0] range
+    # with CHW shape (also when grayscale)
+    # TODO: Add label - prediction diff
+    all_in_one_image = torch.concat([image_sample.to("cpu"), label_sample.to("cpu"), pred_sample.to("cpu")], dim=-1)
+    writer.add_image(f"{tag_prefix}/image_label_pred", all_in_one_image, global_step=global_step)
 
 
 def do_parsing():
@@ -57,7 +59,7 @@ def main():
     print(f"Config: {json.dumps(config.__dict__, indent=4)}")
     set_seed(config.seed)
 
-    model, preprocess_function = init_model(config)
+    model, preprocess_function, inverse_preprocess_function = init_model(config)
     model.to(device)
     total_parameters = 0
     for parameter in model.parameters():
@@ -201,11 +203,12 @@ def main():
                 batch_id % config.num_batches_preds_train_visualization_period
                 == config.num_batches_preds_train_visualization_period - 1
             ):
+                # Draw images restoring the original image values range
                 add_image_sample_to_tensorboard(
                     writer,
                     "train",
                     global_step,
-                    images[0],
+                    inverse_preprocess_function(images[0]),
                     labels[0],
                     preds_sigmoid[0],
                 )
@@ -251,13 +254,11 @@ def main():
                     batch_id % config.num_batches_preds_val_visualization_period
                     == config.num_batches_preds_val_visualization_period - 1
                 ):
-                    # TODO: Create a single image
-                    # TODO: Add label - prediction diff
                     add_image_sample_to_tensorboard(
                         writer,
                         "val",
                         global_step,
-                        images[0],
+                        inverse_preprocess_function(images[0]),
                         labels[0],
                         preds_sigmoid[0],
                     )
