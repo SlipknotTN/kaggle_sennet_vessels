@@ -158,6 +158,7 @@ def main():
 
     # Iterate on test batches
     with torch.no_grad():
+
         for batch_id, data in tqdm(
             enumerate(test_dataloader), desc="batch", total=test_batches
         ):
@@ -169,7 +170,8 @@ def main():
 
             # Move to GPU
             images = images.to(device)
-            labels = labels.to(device)
+            if labels is not None:
+                labels = labels.to(device)
 
             # forward pass to get outputs
             predictions_raw = nn.Sigmoid()(model(images))
@@ -210,21 +212,19 @@ def main():
 
                 # Calculate prediction and labels upscaled for 3D metrics and 3D results export (only 0-1 values)
                 # the fast_surface_dice implementation requires two dataframes as input: prediction and label
-                # CHW
-                prediction_thresholded_npy = (
-                    predictions_thresholded[i].cpu().data.numpy()
-                )
-                # HWC
-                prediction_thresholded_npy = np.transpose(
-                    prediction_thresholded_npy, (1, 2, 0)
-                )
-                prediction_upscaled = cv2.resize(
-                    prediction_thresholded_npy,
-                    original_shape_wh,
-                    interpolation=cv2.INTER_NEAREST,
-                )
-                # WC for rle encode
-                prediction_rle = rle_encode(np.squeeze(prediction_upscaled))
+
+                # Manipulate prediction with torch, 4D input is necessary for upsampling,
+                # upsampling is made at the original image size
+                prediction = torch.unsqueeze(predictions_thresholded[i], dim=0)  # 1 x 1 x height x width shape
+                # print(f"Prediction shape: {prediction.shape}")
+                # print(f"Original shape w x h: {original_image_width} x {original_image_height}")
+                prediction_upscaled_th = nn.UpsamplingNearest2d(
+                    size=[original_image_height, original_image_width]
+                )(prediction)
+                prediction_upscaled_th = torch.squeeze(prediction_upscaled_th)
+                # Numpy shape HW for rle encode
+                prediction_upscaled_npy = prediction_upscaled_th.cpu().data.detach().numpy(force=True)
+                prediction_rle = rle_encode(np.squeeze(prediction_upscaled_npy))
                 prediction_row_df = pd.DataFrame.from_dict(
                     {
                         "id": [
@@ -248,7 +248,7 @@ def main():
                     ignore_index=True,
                 )
                 predictions_for_3d[dataset_kidney_name].append(
-                    prediction_upscaled.astype(bool)
+                    prediction_upscaled_npy.astype(bool)
                 )
 
                 # CHW
@@ -258,7 +258,7 @@ def main():
                 label_upscaled = cv2.resize(
                     label_npy, original_shape_wh, interpolation=cv2.INTER_NEAREST
                 )
-                # WC for rle encode
+                # WH for rle encode
                 label_rle = rle_encode(np.squeeze(label_upscaled))
                 label_row_df = pd.DataFrame.from_dict(
                     {
