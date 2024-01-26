@@ -60,7 +60,7 @@ class BloodVesselDataset(Dataset):
             label = label.astype(np.float32) / 255.0
             # Transform image and label
             transformed = self.transform(image=image, mask=label)
-            # Add the channel dimension to the label
+            # Add the channel dimension to the label to CHW
             if len(transformed["mask"].shape) == 2:
                 transformed["mask"] = torch.unsqueeze(transformed["mask"], dim=0)
             image_preprocessed = self.preprocess_function(transformed["image"])
