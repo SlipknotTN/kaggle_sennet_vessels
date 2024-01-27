@@ -86,10 +86,12 @@ def do_parsing():
         "for prediction visualization as images",
     )
     parser.add_argument(
-        "--input_path",
+        "--input_paths",
         required=True,
         type=str,
-        help="Must contain images dir and optionally labels dir",
+        nargs="*",
+        help="List of input directories, each one should correspond to a kidney and "
+             "must contain images dir and optionally labels dir",
     )
     parser.add_argument(
         "--output_dir",
@@ -130,18 +132,24 @@ def main():
     model.to(device)
 
     data_transform_test = get_test_transform(config, args.inference_input_size)
+    labels_exists = [os.path.exists(os.path.join(input_path, "labels")) for input_path in args.input_paths]
+    labels_exists_check = np.all(labels_exists)
+    print(f"Labels are not available for at least one of {args.input_paths}")
     test_dataset = BloodVesselDataset(
-        [args.input_path],
+        args.input_paths,
         data_transform_test,
         preprocess_function=preprocess_function,
-        dataset_with_gt=os.path.exists(os.path.join(args.input_path, "labels")),
+        dataset_with_gt=labels_exists_check,
     )
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     test_batches = len(test_dataset) // config.train_batch_size + int(
         len(test_dataset) % batch_size > 0
     )
 
-    os.makedirs(os.path.join(args.output_dir, "images"), exist_ok=False)
+    kidney_subset_names = [os.path.basename(input_path) for input_path in args.input_paths]
+
+    for kidney_subset_name in kidney_subset_names:
+        os.makedirs(os.path.join(args.output_dir, f"images_{kidney_subset_name}"), exist_ok=False)
     os.makedirs(os.path.join(args.output_dir, "3d_npy"), exist_ok=False)
 
     dice_score_class: Metric = DiceScore(to_monitor=False)
@@ -251,38 +259,50 @@ def main():
                     prediction_upscaled_npy.astype(bool)
                 )
 
-                # CHW
-                label_npy = labels[i].cpu().data.numpy()
-                # HWC
-                label_npy = np.transpose(label_npy, (1, 2, 0))
-                label_upscaled = cv2.resize(
-                    label_npy, original_shape_wh, interpolation=cv2.INTER_NEAREST
-                )
-                # WH for rle encode
-                label_rle = rle_encode(np.squeeze(label_upscaled))
-                label_row_df = pd.DataFrame.from_dict(
-                    {
-                        "id": [
-                            f"{dataset_kidney_name}_{os.path.basename(image_path[:-4])}"
-                        ],
-                        "rle": [label_rle],
-                        "width": [original_image_width],
-                        "height": [original_image_height],
-                        "image_id": [dataset_kidney_name],
-                        "slice_id": [os.path.basename(image_path[:-4]).split("_")[-1]],
-                    }
-                )
-                if dataset_kidney_name not in labels_df_dict:
-                    labels_df_dict[dataset_kidney_name] = pd.DataFrame(
-                        columns=["id", "rle", "width", "height", "image_id", "slice_id"]
+                if labels is None:
+                    all_in_one = cv2.hconcat(
+                        [image, prediction_raw_img, prediction_thresholded_img]
                     )
-                labels_df_dict[dataset_kidney_name] = pd.concat(
-                    [labels_df_dict[dataset_kidney_name], label_row_df],
-                    ignore_index=True,
-                )
-                labels_for_3d[dataset_kidney_name].append(label_upscaled.astype(bool))
+                    cv2.imwrite(
+                        os.path.join(
+                            args.output_dir,
+                            f"images_{dataset_kidney_name}",
+                            os.path.basename(image_path)
+                        ),
+                        all_in_one,
+                    )
+                else:
+                    # CHW
+                    label_npy = labels[i].cpu().data.numpy()
+                    # HWC
+                    label_npy = np.transpose(label_npy, (1, 2, 0))
+                    label_upscaled = cv2.resize(
+                        label_npy, original_shape_wh, interpolation=cv2.INTER_NEAREST
+                    )
+                    # WH for rle encode
+                    label_rle = rle_encode(np.squeeze(label_upscaled))
+                    label_row_df = pd.DataFrame.from_dict(
+                        {
+                            "id": [
+                                f"{dataset_kidney_name}_{os.path.basename(image_path[:-4])}"
+                            ],
+                            "rle": [label_rle],
+                            "width": [original_image_width],
+                            "height": [original_image_height],
+                            "image_id": [dataset_kidney_name],
+                            "slice_id": [os.path.basename(image_path[:-4]).split("_")[-1]],
+                        }
+                    )
+                    if dataset_kidney_name not in labels_df_dict:
+                        labels_df_dict[dataset_kidney_name] = pd.DataFrame(
+                            columns=["id", "rle", "width", "height", "image_id", "slice_id"]
+                        )
+                    labels_df_dict[dataset_kidney_name] = pd.concat(
+                        [labels_df_dict[dataset_kidney_name], label_row_df],
+                        ignore_index=True,
+                    )
+                    labels_for_3d[dataset_kidney_name].append(label_upscaled.astype(bool))
 
-                if label_img is not None:
                     # TODO: Extract function(s)
                     diff_on_image = np.copy(image)
                     diff_on_image = cv2.cvtColor(diff_on_image, cv2.COLOR_GRAY2BGR)
@@ -327,58 +347,36 @@ def main():
                         ]
                     )
                     all_in_one = cv2.vconcat([row_one, row_two])
-                else:
-                    all_in_one = cv2.hconcat(
-                        [image, prediction_raw_img, prediction_thresholded_img]
-                    )
-                dice_score = dice_score_class.evaluate(
-                    predictions_thresholded[i], labels[i]
-                )
-                print(f"{image_path} {dice_score_class.name} {dice_score:.2f}")
-                dice_2d_scores[dataset_kidney_name].append(dice_score)
-                single_2d_slices_scores.append(
-                    {
-                        "image_path": image_path,
-                        dice_score_class.name: f"{dice_score:.2f}",
-                    }
-                )
-                cv2.imwrite(
-                    os.path.join(
-                        args.output_dir,
-                        "images",
-                        os.path.basename(image_path)[:-4]
-                        + f"_{dice_score_class.name}_{dice_score:.2f}.png",
-                    ),
-                    all_in_one,
-                )
 
-    metrics = defaultdict(dict)
-    # 2D metrics: average 2D dice score (on each 2D slice)
-    for dataset_kidney_name, scores in dice_2d_scores.items():
-        avg_2d_dice_score = np.mean(scores)
-        print(f"{dataset_kidney_name} avg 2D dice score: {avg_2d_dice_score:.2f}")
-        metrics[dataset_kidney_name]["avg_2D_dice_score"] = f"{avg_2d_dice_score:.2f}"
-    # 3D metrics: surface dice and save 3D numpy array for later analysis
-    for dataset_kidney_name in predictions_for_3d.keys():
-        print(f"{dataset_kidney_name}: saving 3d numpy prediction and label...")
-        kidney_predictions_for_3d = predictions_for_3d[dataset_kidney_name]
-        kidney_labels_for_3d = labels_for_3d[dataset_kidney_name]
-        kidney_prediction_3d = np.stack(kidney_predictions_for_3d, axis=0)  # CHW
-        kidney_label_3d = np.stack(kidney_labels_for_3d, axis=0)  # CHW
-        if args.save_3d_predictions:
-            np.save(
-                os.path.join(
-                    args.output_dir, "3d_npy", f"{dataset_kidney_name}_prediction.npy"
-                ),
-                kidney_prediction_3d,
-            )
-        if args.save_3d_labels:
-            np.save(
-                os.path.join(
-                    args.output_dir, "3d_npy", f"{dataset_kidney_name}_label.npy"
-                ),
-                kidney_label_3d,
-            )
+                    dice_score = dice_score_class.evaluate(
+                        predictions_thresholded[i], labels[i]
+                    )
+                    print(f"{image_path} {dice_score_class.name} {dice_score:.2f}")
+                    dice_2d_scores[dataset_kidney_name].append(dice_score)
+                    single_2d_slices_scores.append(
+                        {
+                            "image_path": image_path,
+                            dice_score_class.name: f"{dice_score:.2f}",
+                        }
+                    )
+                    cv2.imwrite(
+                        os.path.join(
+                            args.output_dir,
+                            f"images_{dataset_kidney_name}",
+                            os.path.basename(image_path)[:-4]
+                            + f"_{dice_score_class.name}_{dice_score:.2f}.png",
+                        ),
+                        all_in_one,
+                    )
+
+    if labels_exists_check:
+        metrics = defaultdict(dict)
+        # 2D metrics: average 2D dice score (on each 2D slice)
+        for dataset_kidney_name, scores in dice_2d_scores.items():
+            avg_2d_dice_score = np.mean(scores)
+            print(f"{dataset_kidney_name} avg 2D dice score: {avg_2d_dice_score:.2f}")
+            metrics[dataset_kidney_name]["avg_2D_dice_score"] = f"{avg_2d_dice_score:.2f}"
+
         print(f"{dataset_kidney_name}: calculating surface dice score...")
         surface_dice_score = compute_surface_dice_score(
             predictions_df_dict[dataset_kidney_name],
@@ -402,21 +400,47 @@ def main():
             index=False,
             sep=";",
         )
-    with open(os.path.join(args.output_dir, "metrics.json"), "w") as out_fp:
-        json.dump(metrics, out_fp, indent=4)
-    print(f"Metrics written to {os.path.join(args.output_dir, 'metrics.json')}")
 
-    with open(
-        os.path.join(args.output_dir, "single_2d_slices_scores.csv"), "w"
-    ) as out_fp:
-        fieldnames = ["image_path", dice_score_class.name]
-        writer = csv.DictWriter(out_fp, fieldnames=fieldnames)
-        writer.writeheader()
-        for single_2d_slice_scores_row in single_2d_slices_scores:
-            writer.writerow(single_2d_slice_scores_row)
-    print(
-        f"2D slices scores written to {os.path.join(args.output_dir, 'single_2d_slices_scores.csv')}"
-    )
+        with open(os.path.join(args.output_dir, "metrics.json"), "w") as out_fp:
+            json.dump(metrics, out_fp, indent=4)
+        print(f"Metrics written to {os.path.join(args.output_dir, 'metrics.json')}")
+
+        with open(
+                os.path.join(args.output_dir, "single_2d_slices_scores.csv"), "w"
+        ) as out_fp:
+            fieldnames = ["image_path", dice_score_class.name]
+            writer = csv.DictWriter(out_fp, fieldnames=fieldnames)
+            writer.writeheader()
+            for single_2d_slice_scores_row in single_2d_slices_scores:
+                writer.writerow(single_2d_slice_scores_row)
+        print(
+            f"2D slices scores written to {os.path.join(args.output_dir, 'single_2d_slices_scores.csv')}"
+        )
+
+    # 3D metrics: surface dice and save 3D numpy array for later analysis
+    for dataset_kidney_name in predictions_for_3d.keys():
+        print(f"{dataset_kidney_name}: saving 3d numpy prediction and label...")
+        if args.save_3d_predictions:
+            kidney_predictions_for_3d = predictions_for_3d[dataset_kidney_name]
+            kidney_prediction_3d = np.stack(kidney_predictions_for_3d, axis=0)  # CHW
+            np.save(
+                os.path.join(
+                    args.output_dir, "3d_npy", f"{dataset_kidney_name}_prediction.npy"
+                ),
+                kidney_prediction_3d,
+            )
+        if args.save_3d_labels:
+            if labels_exists_check:
+                kidney_labels_for_3d = labels_for_3d[dataset_kidney_name]
+                kidney_label_3d = np.stack(kidney_labels_for_3d, axis=0)  # CHW
+                np.save(
+                    os.path.join(
+                        args.output_dir, "3d_npy", f"{dataset_kidney_name}_label.npy"
+                    ),
+                    kidney_label_3d,
+                )
+            else:
+                print("Labels not available for all the input directories, saving 3D labels will be skipped")
 
 
 if __name__ == "__main__":
