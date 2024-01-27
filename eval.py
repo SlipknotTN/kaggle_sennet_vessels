@@ -91,7 +91,7 @@ def do_parsing():
         type=str,
         nargs="*",
         help="List of input directories, each one should correspond to a kidney and "
-             "must contain images dir and optionally labels dir",
+        "must contain images dir and optionally labels dir",
     )
     parser.add_argument(
         "--output_dir",
@@ -132,7 +132,10 @@ def main():
     model.to(device)
 
     data_transform_test = get_test_transform(config, args.inference_input_size)
-    labels_exists = [os.path.exists(os.path.join(input_path, "labels")) for input_path in args.input_paths]
+    labels_exists = [
+        os.path.exists(os.path.join(input_path, "labels"))
+        for input_path in args.input_paths
+    ]
     labels_exists_check = np.all(labels_exists)
     print(f"Labels are not available for at least one of {args.input_paths}")
     test_dataset = BloodVesselDataset(
@@ -146,10 +149,15 @@ def main():
         len(test_dataset) % batch_size > 0
     )
 
-    kidney_subset_names = [os.path.basename(input_path) for input_path in args.input_paths]
+    kidney_subset_names = [
+        os.path.basename(input_path) for input_path in args.input_paths
+    ]
 
     for kidney_subset_name in kidney_subset_names:
-        os.makedirs(os.path.join(args.output_dir, f"images_{kidney_subset_name}"), exist_ok=False)
+        os.makedirs(
+            os.path.join(args.output_dir, f"images_{kidney_subset_name}"),
+            exist_ok=False,
+        )
     os.makedirs(os.path.join(args.output_dir, "3d_npy"), exist_ok=False)
 
     dice_score_class: Metric = DiceScore(to_monitor=False)
@@ -166,7 +174,6 @@ def main():
 
     # Iterate on test batches
     with torch.no_grad():
-
         for batch_id, data in tqdm(
             enumerate(test_dataloader), desc="batch", total=test_batches
         ):
@@ -223,7 +230,9 @@ def main():
 
                 # Manipulate prediction with torch, 4D input is necessary for upsampling,
                 # upsampling is made at the original image size
-                prediction = torch.unsqueeze(predictions_thresholded[i], dim=0)  # 1 x 1 x height x width shape
+                prediction = torch.unsqueeze(
+                    predictions_thresholded[i], dim=0
+                )  # 1 x 1 x height x width shape
                 # print(f"Prediction shape: {prediction.shape}")
                 # print(f"Original shape w x h: {original_image_width} x {original_image_height}")
                 prediction_upscaled_th = nn.UpsamplingNearest2d(
@@ -231,7 +240,9 @@ def main():
                 )(prediction)
                 prediction_upscaled_th = torch.squeeze(prediction_upscaled_th)
                 # Numpy shape HW for rle encode
-                prediction_upscaled_npy = prediction_upscaled_th.cpu().data.detach().numpy(force=True)
+                prediction_upscaled_npy = (
+                    prediction_upscaled_th.cpu().data.detach().numpy(force=True)
+                )
                 prediction_rle = rle_encode(np.squeeze(prediction_upscaled_npy))
                 prediction_row_df = pd.DataFrame.from_dict(
                     {
@@ -267,7 +278,7 @@ def main():
                         os.path.join(
                             args.output_dir,
                             f"images_{dataset_kidney_name}",
-                            os.path.basename(image_path)
+                            os.path.basename(image_path),
                         ),
                         all_in_one,
                     )
@@ -290,18 +301,29 @@ def main():
                             "width": [original_image_width],
                             "height": [original_image_height],
                             "image_id": [dataset_kidney_name],
-                            "slice_id": [os.path.basename(image_path[:-4]).split("_")[-1]],
+                            "slice_id": [
+                                os.path.basename(image_path[:-4]).split("_")[-1]
+                            ],
                         }
                     )
                     if dataset_kidney_name not in labels_df_dict:
                         labels_df_dict[dataset_kidney_name] = pd.DataFrame(
-                            columns=["id", "rle", "width", "height", "image_id", "slice_id"]
+                            columns=[
+                                "id",
+                                "rle",
+                                "width",
+                                "height",
+                                "image_id",
+                                "slice_id",
+                            ]
                         )
                     labels_df_dict[dataset_kidney_name] = pd.concat(
                         [labels_df_dict[dataset_kidney_name], label_row_df],
                         ignore_index=True,
                     )
-                    labels_for_3d[dataset_kidney_name].append(label_upscaled.astype(bool))
+                    labels_for_3d[dataset_kidney_name].append(
+                        label_upscaled.astype(bool)
+                    )
 
                     # TODO: Extract function(s)
                     diff_on_image = np.copy(image)
@@ -375,7 +397,9 @@ def main():
         for dataset_kidney_name, scores in dice_2d_scores.items():
             avg_2d_dice_score = np.mean(scores)
             print(f"{dataset_kidney_name} avg 2D dice score: {avg_2d_dice_score:.2f}")
-            metrics[dataset_kidney_name]["avg_2D_dice_score"] = f"{avg_2d_dice_score:.2f}"
+            metrics[dataset_kidney_name][
+                "avg_2D_dice_score"
+            ] = f"{avg_2d_dice_score:.2f}"
 
         print(f"{dataset_kidney_name}: calculating surface dice score...")
         surface_dice_score = compute_surface_dice_score(
@@ -406,7 +430,7 @@ def main():
         print(f"Metrics written to {os.path.join(args.output_dir, 'metrics.json')}")
 
         with open(
-                os.path.join(args.output_dir, "single_2d_slices_scores.csv"), "w"
+            os.path.join(args.output_dir, "single_2d_slices_scores.csv"), "w"
         ) as out_fp:
             fieldnames = ["image_path", dice_score_class.name]
             writer = csv.DictWriter(out_fp, fieldnames=fieldnames)
@@ -440,7 +464,9 @@ def main():
                     kidney_label_3d,
                 )
             else:
-                print("Labels not available for all the input directories, saving 3D labels will be skipped")
+                print(
+                    "Labels not available for all the input directories, saving 3D labels will be skipped"
+                )
 
 
 if __name__ == "__main__":
