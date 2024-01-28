@@ -28,11 +28,13 @@ def get_train_transform(config: ConfigParams):
         )
     elif config.train_augmentation == "overfit":
         # Overfit test
-        return A.Compose([
-            A.Resize(config.model_train_input_size, config.model_train_input_size),
-            A.ToFloat(max_value=255),
-            ToTensorV2(transpose_mask=True),
-        ])
+        return A.Compose(
+            [
+                A.Resize(config.model_train_input_size, config.model_train_input_size),
+                A.ToFloat(max_value=255),
+                ToTensorV2(transpose_mask=True),
+            ]
+        )
     elif config.train_augmentation == "my_aug_v2":
         return A.Compose(
             [
