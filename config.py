@@ -9,9 +9,6 @@ class ConfigParams(object):
 
         # Train
         self.train_batch_size = config.getint("TRAIN", "batch_size")
-        self.train_resize_before_crop = config.getint(
-            "TRAIN", "train_resize_before_crop"
-        )
         self.epochs = config.getint("TRAIN", "epochs")
         self.loss_function = config.get("TRAIN", "loss_function")
         if self.loss_function == "smp_focal_loss":
