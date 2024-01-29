@@ -71,12 +71,7 @@ def get_val_transform(config: ConfigParams):
     )
 
 
-def get_test_transform(config: ConfigParams, inference_input_size=None):
-    input_size = (
-        config.model_train_input_size
-        if inference_input_size is None
-        else inference_input_size
-    )
+def get_test_transform(input_size: int):
     return A.Compose(
         [
             A.Resize(input_size, input_size),

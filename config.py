@@ -68,4 +68,5 @@ class ConfigParams(object):
             self.model_dropout = config.getboolean("MODEL", "dropout", fallback=True)
 
         # Inference
-        self.threshold = config.getfloat("INFERENCE", "threshold", fallback=None)
+        self.inference_threshold = config.getfloat("INFERENCE", "threshold", fallback=None)
+        self.tta_mode = config.get("INFERENCE", "tta_mode", fallback=None)

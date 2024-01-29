@@ -16,17 +16,19 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
+from torch.nn.functional import interpolate
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from config import ConfigParams
-from data.dataset import BloodVesselDataset
+from data.dataset import BloodVesselDatasetTTA
 from data.rle import rle_encode
 from data.transforms import get_test_transform
 from metrics.fast_surface_dice.fast_surface_dice import compute_surface_dice_score
 from metrics.metrics import DiceScore, Metric
 from model import init_model
 from utils import get_device
+from tta import predict_crops_tta_max, predict_no_tta
 
 
 def convert_to_image(
@@ -47,6 +49,8 @@ def convert_to_image(
     image = np.transpose((tensor_npy * 255.0).astype(np.uint8), (1, 2, 0))
     if resize_to_wh:
         image = cv2.resize(image, resize_to_wh)
+    if len(image.shape) == 2:
+        image = np.expand_dims(image, axis=-1)
     return image
 
 
@@ -86,6 +90,13 @@ def do_parsing():
         "for prediction visualization as images",
     )
     parser.add_argument(
+        "--tta_mode",
+        choices=["4+full_max", "5+full_max"],
+        required=False,
+        default=None,
+        help="Test time augmentation mode, don't pass it to don't use TTA"
+    )
+    parser.add_argument(
         "--input_paths",
         required=True,
         type=str,
@@ -122,8 +133,9 @@ def main():
     batch_size = (
         args.batch_size if args.batch_size is not None else config.train_batch_size
     )
-    threshold = args.threshold if args.threshold is not None else config.threshold
+    threshold = args.threshold if args.threshold is not None else config.inference_threshold
     assert threshold is not None
+    tta_mode = args.tta_mode if args.tta_mode is not None else config.tta_mode
 
     device = get_device()
     model, preprocess_function, inverse_preprocess_function = init_model(config)
@@ -131,18 +143,21 @@ def main():
     model.eval()
     model.to(device)
 
-    data_transform_test = get_test_transform(config, args.inference_input_size)
+    inference_input_size = args.inference_input_size if args.inference_input_size else config.model_train_input_size
+    data_transform_test = get_test_transform(inference_input_size)
     labels_exists = [
         os.path.exists(os.path.join(input_path, "labels"))
         for input_path in args.input_paths
     ]
     labels_exists_check = np.all(labels_exists)
     print(f"Labels are not available for at least one of {args.input_paths}")
-    test_dataset = BloodVesselDataset(
-        args.input_paths,
-        data_transform_test,
+    test_dataset = BloodVesselDatasetTTA(
+        input_size=inference_input_size,
+        selected_dirs=args.input_paths,
+        transform=data_transform_test,
         preprocess_function=preprocess_function,
         dataset_with_gt=labels_exists_check,
+        tta_mode=tta_mode,
     )
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     test_batches = len(test_dataset) // config.train_batch_size + int(
@@ -153,12 +168,13 @@ def main():
         os.path.basename(input_path) for input_path in args.input_paths
     ]
 
+    # TODO: Enable again exist_ok=False
     for kidney_subset_name in kidney_subset_names:
         os.makedirs(
             os.path.join(args.output_dir, f"images_{kidney_subset_name}"),
-            exist_ok=False,
+            exist_ok=True,
         )
-    os.makedirs(os.path.join(args.output_dir, "3d_npy"), exist_ok=False)
+    os.makedirs(os.path.join(args.output_dir, "3d_npy"), exist_ok=True)
 
     dice_score_class: Metric = DiceScore(to_monitor=False)
 
@@ -190,16 +206,17 @@ def main():
 
             # forward pass to get outputs
             predictions_raw = nn.Sigmoid()(model(images))
-            # Prediction is thresholded because rle_encoding used for the challenge
-            # requires only 0 or 1 values, while the validation metrics during the training
-            # are calculated on the sigmoid raw output
-            predictions_thresholded = torch.as_tensor(
-                predictions_raw > threshold, dtype=predictions_raw.dtype
-            )
+
+            # Prepare results for TTA
+            if tta_mode:
+                tl_predictions_raw = nn.Sigmoid()(model(data["top_left"].to(device)))
+                tr_predictions_raw = nn.Sigmoid()(model(data["top_right"].to(device)))
+                bl_predictions_raw = nn.Sigmoid()(model(data["bottom_left"].to(device)))
+                br_predictions_raw = nn.Sigmoid()(model(data["bottom_right"].to(device)))
+                center_predictions_raw = nn.Sigmoid()(model(data["center"].to(device)))
 
             for i in range(images.shape[0]):
                 image_path = images_paths[i]
-
                 dataset_kidney_name = image_path.split(os.sep)[-3]
 
                 # Shape format is a list of 3 elements (H-W-C).
@@ -213,32 +230,49 @@ def main():
 
                 # Restore original image values range
                 original_image = inverse_preprocess_function(x_norm=images[i])
-                image = convert_to_image(original_image, resize_to_wh)
+                full_image = convert_to_image(original_image, resize_to_wh)
                 label_img = (
                     convert_to_image(labels[i], resize_to_wh)
                     if labels is not None
                     else None
                 )
 
-                prediction_raw_img = convert_to_image(predictions_raw[i], resize_to_wh)
-                prediction_thresholded_img = convert_to_image(
-                    predictions_thresholded[i], resize_to_wh
-                )
-
                 # Calculate prediction and labels upscaled for 3D metrics and 3D results export (only 0-1 values)
                 # the fast_surface_dice implementation requires two dataframes as input: prediction and label
-
+                if tta_mode:
+                    prediction_raw, prediction_thresholded = predict_crops_tta_max(
+                        full_image_prediction_raw=predictions_raw[i],
+                        tl_prediction_raw=tl_predictions_raw[i],
+                        tr_prediction_raw=tr_predictions_raw[i],
+                        bl_prediction_raw=bl_predictions_raw[i],
+                        br_prediction_raw=br_predictions_raw[i],
+                        center_prediction_raw=center_predictions_raw[i],
+                        threshold=threshold
+                    )
+                else:
+                    prediction_raw, prediction_thresholded = predict_no_tta(
+                        prediction_raw=predictions_raw[i],
+                        threshold=threshold
+                    )
+                print(f"Prediction thresholded shape: {prediction_thresholded.shape}")
+                # print(f"Original shape w x h: {original_image_width} x {original_image_height}")
+                # Force resize to model input for visualization, it could be bigger with TTA
+                # TODO: Find a better solution for this resize
+                prediction_raw_img = convert_to_image(prediction_raw,
+                                                      (config.model_train_input_size, config.model_train_input_size) if args.rescale is False else resize_to_wh)
+                prediction_thresholded_img = convert_to_image(
+                    prediction_thresholded, (config.model_train_input_size, config.model_train_input_size) if args.rescale is False else resize_to_wh
+                )
                 # Manipulate prediction with torch, 4D input is necessary for upsampling,
                 # upsampling is made at the original image size
-                prediction = torch.unsqueeze(
-                    predictions_thresholded[i], dim=0
+                prediction_thresholded_4d = torch.unsqueeze(
+                    prediction_thresholded, dim=0
                 )  # 1 x 1 x height x width shape
-                # print(f"Prediction shape: {prediction.shape}")
-                # print(f"Original shape w x h: {original_image_width} x {original_image_height}")
                 prediction_upscaled_th = nn.UpsamplingNearest2d(
                     size=[original_image_height, original_image_width]
-                )(prediction)
+                )(prediction_thresholded_4d)
                 prediction_upscaled_th = torch.squeeze(prediction_upscaled_th)
+
                 # Numpy shape HW for rle encode
                 prediction_upscaled_npy = (
                     prediction_upscaled_th.cpu().data.detach().numpy(force=True)
@@ -258,6 +292,13 @@ def main():
                         ],  # Not mandatory
                     }
                 )
+                # Resize prediction_threshold to the model input size for 2d dice score (not done before to don't
+                # introduce further degradation with the full size score)
+                # Add one dimension for interpolate and remove it again
+                prediction_thresholded_model_input_size = interpolate(torch.unsqueeze(prediction_thresholded, dim=0),
+                                                                      size=[config.model_train_input_size, config.model_train_input_size]).\
+                    reshape(prediction_thresholded.shape[0], config.model_train_input_size, config.model_train_input_size)
+
                 if dataset_kidney_name not in predictions_df_dict:
                     predictions_df_dict[dataset_kidney_name] = pd.DataFrame(
                         columns=["id", "rle", "width", "height", "image_id", "slice_id"]
@@ -272,7 +313,7 @@ def main():
 
                 if labels is None:
                     all_in_one = cv2.hconcat(
-                        [image, prediction_raw_img, prediction_thresholded_img]
+                        [full_image, prediction_raw_img, prediction_thresholded_img]
                     )
                     cv2.imwrite(
                         os.path.join(
@@ -326,7 +367,7 @@ def main():
                     )
 
                     # TODO: Extract function(s)
-                    diff_on_image = np.copy(image)
+                    diff_on_image = np.copy(full_image)
                     diff_on_image = cv2.cvtColor(diff_on_image, cv2.COLOR_GRAY2BGR)
                     diff_on_black = np.zeros_like(label_img, np.uint8)
                     diff_on_black = cv2.cvtColor(diff_on_black, cv2.COLOR_GRAY2BGR)
@@ -351,7 +392,7 @@ def main():
                     diff_on_image[false_negative_bool] = [255, 0, 0]
                     diff_on_black[false_negative_bool] = [255, 0, 0]
 
-                    image_bgr = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+                    image_bgr = cv2.cvtColor(full_image, cv2.COLOR_GRAY2BGR)
                     label_bgr = cv2.cvtColor(label_img, cv2.COLOR_GRAY2BGR)
                     predictions_raw_img_bgr = cv2.cvtColor(
                         prediction_raw_img, cv2.COLOR_GRAY2BGR
@@ -371,7 +412,7 @@ def main():
                     all_in_one = cv2.vconcat([row_one, row_two])
 
                     dice_score = dice_score_class.evaluate(
-                        predictions_thresholded[i], labels[i]
+                        prediction_thresholded_model_input_size, labels[i]
                     )
                     print(f"{image_path} {dice_score_class.name} {dice_score:.2f}")
                     dice_2d_scores[dataset_kidney_name].append(dice_score)
