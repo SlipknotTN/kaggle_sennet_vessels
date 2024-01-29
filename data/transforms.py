@@ -49,8 +49,7 @@ def get_train_transform(config: ConfigParams):
                     always_apply=True,
                 ),
                 # # This is applied only to the image
-                # # TODO: Maybe too much
-                # A.InvertImg(p=0.5),
+                A.InvertImg(p=0.5),
                 A.HorizontalFlip(p=0.5),
                 A.VerticalFlip(p=0.5),
                 A.GridDistortion(p=0.5),
