@@ -27,8 +27,8 @@ from data.transforms import get_test_transform
 from metrics.fast_surface_dice.fast_surface_dice import compute_surface_dice_score
 from metrics.metrics import DiceScore, Metric
 from model import init_model
-from utils import get_device
 from tta import predict_crops_tta_max, predict_no_tta
+from utils import get_device
 
 
 def convert_to_image(
@@ -48,7 +48,7 @@ def convert_to_image(
     tensor_npy = tensor.cpu().data.numpy()
     image = np.transpose((tensor_npy * 255.0).astype(np.uint8), (1, 2, 0))
     if resize_to_wh:
-        image = cv2.resize(image, resize_to_wh)
+        image = cv2.resize(image, resize_to_wh, cv2.INTER_NEAREST)
     if len(image.shape) == 2:
         image = np.expand_dims(image, axis=-1)
     return image
@@ -94,7 +94,7 @@ def do_parsing():
         choices=["4+full_max", "5+full_max"],
         required=False,
         default=None,
-        help="Test time augmentation mode, don't pass it to don't use TTA"
+        help="Test time augmentation mode, don't pass it to don't use TTA",
     )
     parser.add_argument(
         "--input_paths",
@@ -133,7 +133,9 @@ def main():
     batch_size = (
         args.batch_size if args.batch_size is not None else config.train_batch_size
     )
-    threshold = args.threshold if args.threshold is not None else config.inference_threshold
+    threshold = (
+        args.threshold if args.threshold is not None else config.inference_threshold
+    )
     assert threshold is not None
     tta_mode = args.tta_mode if args.tta_mode is not None else config.tta_mode
 
@@ -143,7 +145,11 @@ def main():
     model.eval()
     model.to(device)
 
-    inference_input_size = args.inference_input_size if args.inference_input_size else config.model_train_input_size
+    inference_input_size = (
+        args.inference_input_size
+        if args.inference_input_size
+        else config.model_train_input_size
+    )
     data_transform_test = get_test_transform(inference_input_size)
     labels_exists = [
         os.path.exists(os.path.join(input_path, "labels"))
@@ -211,7 +217,9 @@ def main():
                 tl_predictions_raw = nn.Sigmoid()(model(data["top_left"].to(device)))
                 tr_predictions_raw = nn.Sigmoid()(model(data["top_right"].to(device)))
                 bl_predictions_raw = nn.Sigmoid()(model(data["bottom_left"].to(device)))
-                br_predictions_raw = nn.Sigmoid()(model(data["bottom_right"].to(device)))
+                br_predictions_raw = nn.Sigmoid()(
+                    model(data["bottom_right"].to(device))
+                )
                 center_predictions_raw = nn.Sigmoid()(model(data["center"].to(device)))
 
             for i in range(images.shape[0]):
@@ -247,21 +255,27 @@ def main():
                         br_prediction_raw=br_predictions_raw[i],
                         center_prediction_raw=center_predictions_raw[i],
                         threshold=threshold,
-                        tta_mode=tta_mode
+                        tta_mode=tta_mode,
                     )
                 else:
                     prediction_raw, prediction_thresholded = predict_no_tta(
-                        prediction_raw=predictions_raw[i],
-                        threshold=threshold
+                        prediction_raw=predictions_raw[i], threshold=threshold
                     )
                 # print(f"Prediction thresholded shape: {prediction_thresholded.shape}")
                 # print(f"Original shape w x h: {original_image_width} x {original_image_height}")
                 # Force resize to model input for visualization, it could be bigger with TTA
                 # TODO: Find a better solution for this resize
-                prediction_raw_img = convert_to_image(prediction_raw,
-                                                      (inference_input_size, inference_input_size) if args.rescale is False else resize_to_wh)
+                prediction_raw_img = convert_to_image(
+                    prediction_raw,
+                    (inference_input_size, inference_input_size)
+                    if args.rescale is False
+                    else resize_to_wh,
+                )
                 prediction_thresholded_img = convert_to_image(
-                    prediction_thresholded, (inference_input_size, inference_input_size) if args.rescale is False else resize_to_wh
+                    prediction_thresholded,
+                    (inference_input_size, inference_input_size)
+                    if args.rescale is False
+                    else resize_to_wh,
                 )
                 # Manipulate prediction with torch, 4D input is necessary for upsampling,
                 # upsampling is made at the original image size
@@ -295,8 +309,14 @@ def main():
                 # Resize prediction_threshold to the model input size for 2d dice score (not done before to don't
                 # introduce further degradation with the full size score)
                 # Add one dimension for interpolate and remove it again
-                prediction_thresholded_model_input_size = torch.squeeze(interpolate(torch.unsqueeze(prediction_thresholded, dim=0),
-                                                                      size=[inference_input_size, inference_input_size]), dim=0)
+                prediction_thresholded_model_input_size = torch.squeeze(
+                    interpolate(
+                        torch.unsqueeze(prediction_thresholded, dim=0),
+                        size=[inference_input_size, inference_input_size],
+                        mode="nearest",
+                    ),
+                    dim=0,
+                )
 
                 if dataset_kidney_name not in predictions_df_dict:
                     predictions_df_dict[dataset_kidney_name] = pd.DataFrame(

@@ -1,4 +1,5 @@
 import albumentations as A
+import cv2
 from albumentations.pytorch import ToTensorV2
 
 from config import ConfigParams
@@ -31,7 +32,11 @@ def get_train_transform(config: ConfigParams):
         # Overfit test
         return A.Compose(
             [
-                A.Resize(config.model_train_input_size, config.model_train_input_size),
+                A.Resize(
+                    config.model_train_input_size,
+                    config.model_train_input_size,
+                    interpolation=cv2.INTER_NEAREST,
+                ),
                 A.ToFloat(max_value=255),
                 ToTensorV2(transpose_mask=True),
             ]
@@ -40,8 +45,12 @@ def get_train_transform(config: ConfigParams):
         return A.Compose(
             [
                 A.Rotate(limit=180, always_apply=True),
-                # Zoom level similar to validation, no TTA necessary?
-                A.Resize(config.model_train_input_size, config.model_train_input_size),
+                # Zoom level similar to validation, no TTA strictly necessary, but it helps for the score
+                A.Resize(
+                    config.model_train_input_size,
+                    config.model_train_input_size,
+                    interpolation=cv2.INTER_NEAREST,
+                ),
                 # This is applied only to the image
                 A.RandomBrightnessContrast(
                     brightness_limit=0.33,
@@ -65,7 +74,11 @@ def get_train_transform(config: ConfigParams):
 def get_val_transform(config: ConfigParams):
     return A.Compose(
         [
-            A.Resize(config.model_train_input_size, config.model_train_input_size),
+            A.Resize(
+                config.model_train_input_size,
+                config.model_train_input_size,
+                interpolation=cv2.INTER_NEAREST,
+            ),
             A.ToFloat(max_value=255),
             ToTensorV2(),
         ],
@@ -75,7 +88,7 @@ def get_val_transform(config: ConfigParams):
 def get_test_transform(input_size: int):
     return A.Compose(
         [
-            A.Resize(input_size, input_size),
+            A.Resize(input_size, input_size, interpolation=cv2.INTER_NEAREST),
             A.ToFloat(max_value=255),
             ToTensorV2(),
         ],

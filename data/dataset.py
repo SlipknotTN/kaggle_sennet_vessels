@@ -86,13 +86,24 @@ class BloodVesselDatasetTTA(BloodVesselDataset):
     """
     Dataset with test time augmentation support (not implemented with albumentation)
     """
-    def __init__(self, selected_dirs, transform, preprocess_function, dataset_with_gt, input_size, tta_mode=None):
+
+    def __init__(
+        self,
+        selected_dirs,
+        transform,
+        preprocess_function,
+        dataset_with_gt,
+        input_size,
+        tta_mode=None,
+    ):
         super().__init__(selected_dirs, transform, preprocess_function, dataset_with_gt)
         self.input_size = input_size
         self.tta_mode = tta_mode
-        assert self.tta_mode in [None, ""] or \
-            self.tta_mode.startswith("4+full") or \
-            self.tta_mode.startswith("5+full"), f"tta_mode {self.tta_mode} not supported"
+        assert (
+            self.tta_mode in [None, ""]
+            or self.tta_mode.startswith("4+full")
+            or self.tta_mode.startswith("5+full")
+        ), f"tta_mode {self.tta_mode} not supported"
         if self.tta_mode in [None, ""]:
             self.tta_mode = None
         else:
@@ -119,23 +130,45 @@ class BloodVesselDatasetTTA(BloodVesselDataset):
             full_image_3dims = np.expand_dims(full_image_2dims, axis=-1)
 
             # Get crops
-            image_double_size_2dims = cv2.resize(full_image_2dims, (self.input_size * 2, self.input_size * 2))
+            image_double_size_2dims = cv2.resize(
+                full_image_2dims,
+                (self.input_size * 2, self.input_size * 2),
+                cv2.INTER_NEAREST,
+            )
             image_double_size_3dims = np.expand_dims(image_double_size_2dims, axis=-1)
-            top_left_3dims = image_double_size_3dims[0:self.input_size, 0:self.input_size, :]
-            top_right_3dims = image_double_size_3dims[0:self.input_size, self.input_size:, :]
-            bottom_left_3dims = image_double_size_3dims[self.input_size:, 0:self.input_size, :]
-            bottom_right_3dims = image_double_size_3dims[self.input_size:, self.input_size:, :]
+            top_left_3dims = image_double_size_3dims[
+                0 : self.input_size, 0 : self.input_size, :
+            ]
+            top_right_3dims = image_double_size_3dims[
+                0 : self.input_size, self.input_size :, :
+            ]
+            bottom_left_3dims = image_double_size_3dims[
+                self.input_size :, 0 : self.input_size, :
+            ]
+            bottom_right_3dims = image_double_size_3dims[
+                self.input_size :, self.input_size :, :
+            ]
             center_3dims = image_double_size_3dims[
-                               int(self.input_size / 2):-int(self.input_size/2),
-                               int(self.input_size / 2):-int(self.input_size/2),
-                               :
-                           ]
-            top_left_preprocessed = self.preprocess_function(self.transform(image=top_left_3dims)["image"])
-            top_right_preprocessed = self.preprocess_function(self.transform(image=top_right_3dims)["image"])
-            bottom_left_preprocessed = self.preprocess_function(self.transform(image=bottom_left_3dims)["image"])
-            bottom_right_preprocessed = self.preprocess_function(self.transform(image=bottom_right_3dims)["image"])
+                int(self.input_size / 2) : -int(self.input_size / 2),
+                int(self.input_size / 2) : -int(self.input_size / 2),
+                :,
+            ]
+            top_left_preprocessed = self.preprocess_function(
+                self.transform(image=top_left_3dims)["image"]
+            )
+            top_right_preprocessed = self.preprocess_function(
+                self.transform(image=top_right_3dims)["image"]
+            )
+            bottom_left_preprocessed = self.preprocess_function(
+                self.transform(image=bottom_left_3dims)["image"]
+            )
+            bottom_right_preprocessed = self.preprocess_function(
+                self.transform(image=bottom_right_3dims)["image"]
+            )
             # Return center preprocessed even if not used
-            center_preprocessed = self.preprocess_function(self.transform(image=center_3dims)["image"])
+            center_preprocessed = self.preprocess_function(
+                self.transform(image=center_3dims)["image"]
+            )
 
             # Get label and transform it if available
             if sample[1]:
@@ -144,11 +177,17 @@ class BloodVesselDatasetTTA(BloodVesselDataset):
                 # HW, [0.0, 1.0] range, no channel dimension
                 label = label.astype(np.float32) / 255.0
                 # Transform full image and label
-                transformed_full_image_and_label_dict = self.transform(image=full_image_3dims, mask=label)
+                transformed_full_image_and_label_dict = self.transform(
+                    image=full_image_3dims, mask=label
+                )
                 # Add the channel dimension to the label to CHW
                 if len(transformed_full_image_and_label_dict["mask"].shape) == 2:
-                    transformed_full_image_and_label_dict["mask"] = torch.unsqueeze(transformed_full_image_and_label_dict["mask"], dim=0)
-                full_image_preprocessed = self.preprocess_function(transformed_full_image_and_label_dict["image"])
+                    transformed_full_image_and_label_dict["mask"] = torch.unsqueeze(
+                        transformed_full_image_and_label_dict["mask"], dim=0
+                    )
+                full_image_preprocessed = self.preprocess_function(
+                    transformed_full_image_and_label_dict["image"]
+                )
                 return {
                     "image": full_image_preprocessed,
                     "label": transformed_full_image_and_label_dict["mask"],
@@ -158,12 +197,14 @@ class BloodVesselDatasetTTA(BloodVesselDataset):
                     "top_right": top_right_preprocessed,
                     "bottom_left": bottom_left_preprocessed,
                     "bottom_right": bottom_right_preprocessed,
-                    "center": center_preprocessed
+                    "center": center_preprocessed,
                 }
             else:
                 # Transform image
                 transformed_full_image_dict = self.transform(image=full_image_3dims)
-                full_image_preprocessed = self.preprocess_function(transformed_full_image_dict["image"])
+                full_image_preprocessed = self.preprocess_function(
+                    transformed_full_image_dict["image"]
+                )
 
                 return {
                     "image": full_image_preprocessed,
@@ -173,9 +214,7 @@ class BloodVesselDatasetTTA(BloodVesselDataset):
                     "top_right": top_right_preprocessed,
                     "bottom_left": bottom_left_preprocessed,
                     "bottom_right": bottom_right_preprocessed,
-                    "center": center_preprocessed
+                    "center": center_preprocessed,
                 }
         else:
             raise Exception(f"tta_mode {self.tta_mode} not supported")
-
-
