@@ -168,13 +168,12 @@ def main():
         os.path.basename(input_path) for input_path in args.input_paths
     ]
 
-    # TODO: Enable again exist_ok=False
     for kidney_subset_name in kidney_subset_names:
         os.makedirs(
             os.path.join(args.output_dir, f"images_{kidney_subset_name}"),
-            exist_ok=True,
+            exist_ok=False,
         )
-    os.makedirs(os.path.join(args.output_dir, "3d_npy"), exist_ok=True)
+    os.makedirs(os.path.join(args.output_dir, "3d_npy"), exist_ok=False)
 
     dice_score_class: Metric = DiceScore(to_monitor=False)
 
@@ -247,21 +246,22 @@ def main():
                         bl_prediction_raw=bl_predictions_raw[i],
                         br_prediction_raw=br_predictions_raw[i],
                         center_prediction_raw=center_predictions_raw[i],
-                        threshold=threshold
+                        threshold=threshold,
+                        tta_mode=tta_mode
                     )
                 else:
                     prediction_raw, prediction_thresholded = predict_no_tta(
                         prediction_raw=predictions_raw[i],
                         threshold=threshold
                     )
-                print(f"Prediction thresholded shape: {prediction_thresholded.shape}")
+                # print(f"Prediction thresholded shape: {prediction_thresholded.shape}")
                 # print(f"Original shape w x h: {original_image_width} x {original_image_height}")
                 # Force resize to model input for visualization, it could be bigger with TTA
                 # TODO: Find a better solution for this resize
                 prediction_raw_img = convert_to_image(prediction_raw,
-                                                      (config.model_train_input_size, config.model_train_input_size) if args.rescale is False else resize_to_wh)
+                                                      (inference_input_size, inference_input_size) if args.rescale is False else resize_to_wh)
                 prediction_thresholded_img = convert_to_image(
-                    prediction_thresholded, (config.model_train_input_size, config.model_train_input_size) if args.rescale is False else resize_to_wh
+                    prediction_thresholded, (inference_input_size, inference_input_size) if args.rescale is False else resize_to_wh
                 )
                 # Manipulate prediction with torch, 4D input is necessary for upsampling,
                 # upsampling is made at the original image size
@@ -295,9 +295,8 @@ def main():
                 # Resize prediction_threshold to the model input size for 2d dice score (not done before to don't
                 # introduce further degradation with the full size score)
                 # Add one dimension for interpolate and remove it again
-                prediction_thresholded_model_input_size = interpolate(torch.unsqueeze(prediction_thresholded, dim=0),
-                                                                      size=[config.model_train_input_size, config.model_train_input_size]).\
-                    reshape(prediction_thresholded.shape[0], config.model_train_input_size, config.model_train_input_size)
+                prediction_thresholded_model_input_size = torch.squeeze(interpolate(torch.unsqueeze(prediction_thresholded, dim=0),
+                                                                      size=[inference_input_size, inference_input_size]), dim=0)
 
                 if dataset_kidney_name not in predictions_df_dict:
                     predictions_df_dict[dataset_kidney_name] = pd.DataFrame(
