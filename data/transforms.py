@@ -5,9 +5,9 @@ from config import ConfigParams
 
 
 def get_train_transform(config: ConfigParams):
-    if config.train_augmentation == "2.5d":
+    if config.train_augmentation == "my_2.5d_aug":
         # Augmentations from https://www.kaggle.com/code/yoyobar/2-5d-cutting-model-baseline-training/notebook
-        # but this requires a specific TTA because the crop is always zoomed in
+        # but this requires a specific TTA because the crop is always zoomed in. Added Invert augmentation.
         return A.Compose(
             [
                 # 2.5d augmentation
@@ -22,6 +22,7 @@ def get_train_transform(config: ConfigParams):
                 A.GaussianBlur(p=0.5),
                 A.MotionBlur(p=0.5),
                 A.GridDistortion(num_steps=5, distort_limit=0.3, p=0.5),
+                A.InvertImg(p=0.5),
                 A.ToFloat(max_value=255),
                 ToTensorV2(transpose_mask=True),
             ]
