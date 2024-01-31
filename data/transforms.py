@@ -45,7 +45,7 @@ def get_train_transform(config: ConfigParams):
         return A.Compose(
             [
                 A.Rotate(limit=180, always_apply=True),
-                # Zoom level similar to validation, no TTA strictly necessary, but it helps for the score
+                # Zoom level similar to validation, no TTA strictly necessary, but it helps a lot for the score
                 A.Resize(
                     config.model_train_input_size,
                     config.model_train_input_size,
