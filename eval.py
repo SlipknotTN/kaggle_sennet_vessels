@@ -285,6 +285,7 @@ def main():
                 prediction_upscaled_th = nn.UpsamplingNearest2d(
                     size=[original_image_height, original_image_width]
                 )(prediction_thresholded_4d)
+                # Back to 3 dimensions CHW
                 prediction_upscaled_th = torch.squeeze(prediction_upscaled_th)
 
                 # Numpy shape HW for rle encode
