@@ -6,9 +6,31 @@ from config import ConfigParams
 
 
 def get_train_transform(config: ConfigParams):
-    if config.train_augmentation == "my_2.5d_aug":
+    if config.train_augmentation == "2.5d_aug":
         # Augmentations from https://www.kaggle.com/code/yoyobar/2-5d-cutting-model-baseline-training/notebook
-        # but this requires a specific TTA because the crop is always zoomed in. Added Invert augmentation.
+        # but this requires a specific TTA or resolution because the crop is always zoomed in.
+        return A.Compose(
+            [
+                # 2.5d augmentation
+                A.Rotate(limit=45, p=0.5),
+                # Always zoomed id
+                A.RandomScale(scale_limit=(0.8, 1.25), p=0.5),
+                A.RandomCrop(
+                    config.model_train_input_size, config.model_train_input_size, p=1
+                ),
+                A.RandomGamma(p=0.75),
+                A.RandomBrightnessContrast(p=0.5),
+                A.GaussianBlur(p=0.5),
+                A.MotionBlur(p=0.5),
+                A.GridDistortion(num_steps=5, distort_limit=0.3, p=0.5),
+                A.ToFloat(max_value=255),
+                ToTensorV2(transpose_mask=True),
+            ]
+        )
+    elif config.train_augmentation == "my_2.5d_aug":
+        # Augmentations from https://www.kaggle.com/code/yoyobar/2-5d-cutting-model-baseline-training/notebook
+        # but this requires a specific TTA or resolution because the crop is always zoomed in.
+        # Added Invert augmentation.
         return A.Compose(
             [
                 # 2.5d augmentation
