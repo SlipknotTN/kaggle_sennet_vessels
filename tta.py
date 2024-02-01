@@ -75,6 +75,7 @@ def predict_crops_tta_max(
         )
     else:
         max_between_crops_pred_ref = not_overlapping_crops_pred_ref
+
     prediction_raw = torch.maximum(max_between_crops_pred_ref, full_image_pred_ref)
 
     prediction_thresholded = torch.as_tensor(

@@ -85,10 +85,12 @@ def get_val_transform(config: ConfigParams):
     )
 
 
-def get_test_transform(input_size: int):
+def get_test_transform(input_size_height: int, input_size_width: int):
+    # Assuming all test images are of the same size, if we want different resize for different images
+    # we need to change the logic and resize it in the dataset itself
     return A.Compose(
         [
-            A.Resize(input_size, input_size, interpolation=cv2.INTER_NEAREST),
+            A.Resize(input_size_height, input_size_width, interpolation=cv2.INTER_NEAREST),
             A.ToFloat(max_value=255),
             ToTensorV2(),
         ],

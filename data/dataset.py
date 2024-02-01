@@ -93,11 +93,13 @@ class BloodVesselDatasetTTA(BloodVesselDataset):
         transform,
         preprocess_function,
         dataset_with_gt,
-        input_size,
+        input_size_width,
+        input_size_height,
         tta_mode=None,
     ):
         super().__init__(selected_dirs, transform, preprocess_function, dataset_with_gt)
-        self.input_size = input_size
+        self.input_size_width = input_size_width
+        self.input_size_height = input_size_height
         self.tta_mode = tta_mode
         assert (
             self.tta_mode in [None, ""]
@@ -107,7 +109,8 @@ class BloodVesselDatasetTTA(BloodVesselDataset):
         if self.tta_mode in [None, ""]:
             self.tta_mode = None
         else:
-            assert input_size % 2 == 0, f"input_size {input_size} is not divisible by 2"
+            assert input_size_width % 2 == 0, f"input_size_width {input_size_width} is not divisible by 2"
+            assert input_size_height % 2 == 0, f"input_size_height {input_size_height} is not divisible by 2"
 
     def __getitem__(self, idx):
         if self.tta_mode is None or self.tta_mode == "":
@@ -132,25 +135,25 @@ class BloodVesselDatasetTTA(BloodVesselDataset):
             # Get crops
             image_double_size_2dims = cv2.resize(
                 full_image_2dims,
-                (self.input_size * 2, self.input_size * 2),
+                (self.input_size_width * 2, self.input_size_height * 2),
                 cv2.INTER_NEAREST,
             )
             image_double_size_3dims = np.expand_dims(image_double_size_2dims, axis=-1)
             top_left_3dims = image_double_size_3dims[
-                0 : self.input_size, 0 : self.input_size, :
+                0 : self.input_size_height, 0 : self.input_size_width, :
             ]
             top_right_3dims = image_double_size_3dims[
-                0 : self.input_size, self.input_size :, :
+                0 : self.input_size_height, self.input_size_width :, :
             ]
             bottom_left_3dims = image_double_size_3dims[
-                self.input_size :, 0 : self.input_size, :
+                self.input_size_height :, 0 : self.input_size_width, :
             ]
             bottom_right_3dims = image_double_size_3dims[
-                self.input_size :, self.input_size :, :
+                self.input_size_height :, self.input_size_width :, :
             ]
             center_3dims = image_double_size_3dims[
-                int(self.input_size / 2) : -int(self.input_size / 2),
-                int(self.input_size / 2) : -int(self.input_size / 2),
+                int(self.input_size_height / 2) : -int(self.input_size_height / 2),
+                int(self.input_size_width / 2) : -int(self.input_size_width / 2),
                 :,
             ]
             top_left_preprocessed = self.preprocess_function(

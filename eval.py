@@ -72,7 +72,9 @@ def do_parsing():
         "--inference_input_size",
         required=False,
         type=int,
-        help="Evaluation input size, otherwise training one is used",
+        nargs="*",
+        help="Evaluation input size width and height, if only one value is passed it will be used both for "
+             "width and height. If no value is passed the training one is used",
     )
     parser.add_argument(
         "--threshold",
@@ -150,15 +152,23 @@ def main():
         if args.inference_input_size
         else config.model_train_input_size
     )
-    data_transform_test = get_test_transform(inference_input_size)
+    if len(inference_input_size) == 2:
+        inference_input_width = inference_input_size[0]
+        inference_input_height = inference_input_size[1]
+    else:
+        inference_input_width = inference_input_size[0]
+        inference_input_height = inference_input_size[0]
+    data_transform_test = get_test_transform(input_size_height=inference_input_height, input_size_width=inference_input_width)
     labels_exists = [
         os.path.exists(os.path.join(input_path, "labels"))
         for input_path in args.input_paths
     ]
     labels_exists_check = np.all(labels_exists)
     print(f"Labels are not available for at least one of {args.input_paths}")
+    print(f"Preparing dataset for inference size w x h: {inference_input_width} x {inference_input_height}")
     test_dataset = BloodVesselDatasetTTA(
-        input_size=inference_input_size,
+        input_size_width=inference_input_width,
+        input_size_height=inference_input_height,
         selected_dirs=args.input_paths,
         transform=data_transform_test,
         preprocess_function=preprocess_function,
@@ -267,13 +277,13 @@ def main():
                 # TODO: Find a better solution for this resize
                 prediction_raw_img = convert_to_image(
                     prediction_raw,
-                    (inference_input_size, inference_input_size)
+                    (inference_input_width, inference_input_height)
                     if args.rescale is False
                     else resize_to_wh,
                 )
                 prediction_thresholded_img = convert_to_image(
                     prediction_thresholded,
-                    (inference_input_size, inference_input_size)
+                    (inference_input_width, inference_input_height)
                     if args.rescale is False
                     else resize_to_wh,
                 )
@@ -313,7 +323,7 @@ def main():
                 prediction_thresholded_model_input_size = torch.squeeze(
                     interpolate(
                         torch.unsqueeze(prediction_thresholded, dim=0),
-                        size=[inference_input_size, inference_input_size],
+                        size=[inference_input_height, inference_input_width],
                         mode="nearest",
                     ),
                     dim=0,
