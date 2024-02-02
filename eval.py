@@ -474,7 +474,7 @@ def main():
             print(f"{dataset_kidney_name} avg 2D dice score: {avg_2d_dice_score:.2f}")
             metrics[dataset_kidney_name][
                 "avg_2D_dice_score"
-            ] = f"{avg_2d_dice_score:.2f}"
+            ] = f"{avg_2d_dice_score:.3f}"
 
         print(f"{dataset_kidney_name}: calculating surface dice score...")
         surface_dice_score = compute_surface_dice_score(
@@ -483,7 +483,7 @@ def main():
             device,
         )
         print(f"Surface dice score:  {surface_dice_score}")
-        metrics[dataset_kidney_name]["surface_dice_score"] = surface_dice_score
+        metrics[dataset_kidney_name]["surface_dice_score"] = f"{surface_dice_score:.3f}"
         # Save also the dataframes
         predictions_df_dict[dataset_kidney_name].to_csv(
             os.path.join(
