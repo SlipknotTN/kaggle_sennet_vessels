@@ -4,6 +4,7 @@ import os
 import shutil
 from collections import OrderedDict, defaultdict
 
+import cv2
 import torch
 import torch.nn as nn
 from tensorboardX import SummaryWriter
@@ -18,6 +19,7 @@ from metrics.metrics import init_metrics
 from model import init_model
 from optimizer import init_optimizer
 from utils import get_device, set_seed
+from visualization.image import convert_to_image
 
 
 def add_image_sample_to_tensorboard(
@@ -52,6 +54,11 @@ def do_parsing():
     )
     parser.add_argument(
         "--output_dir", required=True, type=str, help="Output directory"
+    )
+    parser.add_argument(
+        "--debug_augmentation",
+        action="store_true",
+        help="Visualize training augmented images instead of training",
     )
     args = parser.parse_args()
     return args
@@ -160,6 +167,32 @@ def main():
             # get the input images and labels
             images = data["image"]
             labels = data["label"]
+
+            if args.debug_augmentation:
+                for image_idx in range(images.shape[0]):
+                    image_denorm = inverse_preprocess_function(x_norm=images[image_idx])
+                    original_file = data["file"][image_idx]
+                    image_to_plot = convert_to_image(image_denorm)
+                    original_image = cv2.imread(original_file)
+                    cv2.imshow(
+                        "image_transformed",
+                        cv2.resize(
+                            image_to_plot,
+                            (image_to_plot.shape[1] // 2, image_to_plot.shape[0] // 2),
+                        ),
+                    )
+                    cv2.imshow(
+                        "image_original",
+                        cv2.resize(
+                            original_image,
+                            (
+                                original_image.shape[1] // 2,
+                                original_image.shape[0] // 2,
+                            ),
+                        ),
+                    )
+                    cv2.waitKey(0)
+                continue
 
             # Move to GPU
             labels_device = labels.to(device)
