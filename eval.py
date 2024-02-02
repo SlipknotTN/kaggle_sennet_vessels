@@ -74,7 +74,7 @@ def do_parsing():
         type=int,
         nargs="*",
         help="Evaluation input size width and height, if only one value is passed it will be used both for "
-             "width and height. If no value is passed the training one is used",
+        "width and height. If no value is passed the training one is used",
     )
     parser.add_argument(
         "--threshold",
@@ -158,14 +158,18 @@ def main():
     else:
         inference_input_width = inference_input_size[0]
         inference_input_height = inference_input_size[0]
-    data_transform_test = get_test_transform(input_size_height=inference_input_height, input_size_width=inference_input_width)
+    data_transform_test = get_test_transform(
+        input_size_height=inference_input_height, input_size_width=inference_input_width
+    )
     labels_exists = [
         os.path.exists(os.path.join(input_path, "labels"))
         for input_path in args.input_paths
     ]
     labels_exists_check = np.all(labels_exists)
     print(f"Labels are not available for at least one of {args.input_paths}")
-    print(f"Preparing dataset for inference size w x h: {inference_input_width} x {inference_input_height}")
+    print(
+        f"Preparing dataset for inference size w x h: {inference_input_width} x {inference_input_height}"
+    )
     test_dataset = BloodVesselDatasetTTA(
         input_size_width=inference_input_width,
         input_size_height=inference_input_height,

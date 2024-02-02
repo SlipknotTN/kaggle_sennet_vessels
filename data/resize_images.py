@@ -35,8 +35,12 @@ def main():
     # Assuming all the files in the directory are images
     for image_filename in tqdm(sorted(os.listdir(args.input_path))):
         print(image_filename)
-        image = cv2.imread(os.path.join(args.input_path, image_filename), cv2.IMREAD_COLOR)
-        rsz_image = cv2.resize(image, (args.width, args.height), interpolation=cv2.INTER_NEAREST)
+        image = cv2.imread(
+            os.path.join(args.input_path, image_filename), cv2.IMREAD_COLOR
+        )
+        rsz_image = cv2.resize(
+            image, (args.width, args.height), interpolation=cv2.INTER_NEAREST
+        )
         cv2.imwrite(os.path.join(args.output_path, image_filename), rsz_image)
 
 

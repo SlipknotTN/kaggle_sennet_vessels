@@ -109,8 +109,12 @@ class BloodVesselDatasetTTA(BloodVesselDataset):
         if self.tta_mode in [None, ""]:
             self.tta_mode = None
         else:
-            assert input_size_width % 2 == 0, f"input_size_width {input_size_width} is not divisible by 2"
-            assert input_size_height % 2 == 0, f"input_size_height {input_size_height} is not divisible by 2"
+            assert (
+                input_size_width % 2 == 0
+            ), f"input_size_width {input_size_width} is not divisible by 2"
+            assert (
+                input_size_height % 2 == 0
+            ), f"input_size_height {input_size_height} is not divisible by 2"
 
     def __getitem__(self, idx):
         if self.tta_mode is None or self.tta_mode == "":
