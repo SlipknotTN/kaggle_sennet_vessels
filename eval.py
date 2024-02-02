@@ -150,7 +150,7 @@ def main():
     inference_input_size = (
         args.inference_input_size
         if args.inference_input_size
-        else config.model_train_input_size
+        else [config.model_train_input_size]
     )
     if len(inference_input_size) == 2:
         inference_input_width = inference_input_size[0]
