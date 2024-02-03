@@ -1,8 +1,8 @@
 import argparse
-
 import glob
-import pandas as pd
 import json
+
+import pandas as pd
 
 
 def do_parsing():

@@ -9,7 +9,6 @@ import csv
 import json
 import os
 from collections import defaultdict
-from typing import Optional, Tuple
 
 import cv2
 import numpy as np
@@ -21,7 +20,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from config import ConfigParams
-from data.dataset import BloodVesselDatasetTTA
+from data.dataset import BloodVesselDatasetTest
 from data.rle import rle_encode
 from data.transforms import get_test_transform
 from metrics.fast_surface_dice.fast_surface_dice import compute_surface_dice_score
@@ -29,29 +28,7 @@ from metrics.metrics import DiceScore, Metric
 from model import init_model
 from tta import predict_crops_tta_max, predict_no_tta
 from utils import get_device
-
-
-def convert_to_image(
-    tensor: torch.Tensor, resize_to_wh: Optional[Tuple[int, int]] = None
-) -> np.ndarray:
-    """
-    Convert an inout tensor to an image
-
-    Args:
-        tensor: CHW tensor float32 range [0.0, 1.0]
-        resize_to_wh: Optional resize shape w x h
-
-    Returns:
-        Equivalent image HWC uint8 range [0, 255]
-    """
-    assert tensor.max() <= 1.0 and tensor.min() >= 0.0
-    tensor_npy = tensor.cpu().data.numpy()
-    image = np.transpose((tensor_npy * 255.0).astype(np.uint8), (1, 2, 0))
-    if resize_to_wh:
-        image = cv2.resize(image, resize_to_wh, cv2.INTER_NEAREST)
-    if len(image.shape) == 2:
-        image = np.expand_dims(image, axis=-1)
-    return image
+from visualization.image import convert_to_image
 
 
 def do_parsing():
@@ -170,7 +147,7 @@ def main():
     print(
         f"Preparing dataset for inference size w x h: {inference_input_width} x {inference_input_height}"
     )
-    test_dataset = BloodVesselDatasetTTA(
+    test_dataset = BloodVesselDatasetTest(
         input_size_width=inference_input_width,
         input_size_height=inference_input_height,
         selected_dirs=args.input_paths,
@@ -214,14 +191,19 @@ def main():
         ):
             # get the input images and labels
             images = data["image"]
-            labels = data["label"] if "label" in data else None
+            labels_model_size_nchw = (
+                data["label_model_size"] if "label_model_size" in data else None
+            )
+            labels_full_size_nhw = (
+                data["label_full_size"] if "label_full_size" in data else None
+            )
             images_paths = data["file"]
             images_shapes = data["shape"]
 
             # Move to GPU
             images = images.to(device)
-            if labels is not None:
-                labels = labels.to(device)
+            if labels_full_size_nhw is not None:
+                labels_full_size_nhw = labels_full_size_nhw.to(device)
 
             # forward pass to get outputs
             predictions_raw = nn.Sigmoid()(model(images))
@@ -252,9 +234,9 @@ def main():
                 # Restore original image values range
                 original_image = inverse_preprocess_function(x_norm=images[i])
                 full_image = convert_to_image(original_image, resize_to_wh)
-                label_img = (
-                    convert_to_image(labels[i], resize_to_wh)
-                    if labels is not None
+                label_img_model_size = (
+                    convert_to_image(labels_model_size_nchw[i], resize_to_wh)
+                    if labels_model_size_nchw is not None
                     else None
                 )
 
@@ -321,17 +303,6 @@ def main():
                         ],  # Not mandatory
                     }
                 )
-                # Resize prediction_threshold to the model input size for 2d dice score (not done before to don't
-                # introduce further degradation with the full size score)
-                # Add one dimension for interpolate and remove it again
-                prediction_thresholded_model_input_size = torch.squeeze(
-                    interpolate(
-                        torch.unsqueeze(prediction_thresholded, dim=0),
-                        size=[inference_input_height, inference_input_width],
-                        mode="nearest",
-                    ),
-                    dim=0,
-                )
 
                 if dataset_kidney_name not in predictions_df_dict:
                     predictions_df_dict[dataset_kidney_name] = pd.DataFrame(
@@ -345,7 +316,7 @@ def main():
                     prediction_upscaled_npy.astype(bool)
                 )
 
-                if labels is None:
+                if labels_model_size_nchw is None:
                     all_in_one = cv2.hconcat(
                         [full_image, prediction_raw_img, prediction_thresholded_img]
                     )
@@ -358,15 +329,10 @@ def main():
                         all_in_one,
                     )
                 else:
-                    # CHW
-                    label_npy = labels[i].cpu().data.numpy()
-                    # HWC
-                    label_npy = np.transpose(label_npy, (1, 2, 0))
-                    label_upscaled = cv2.resize(
-                        label_npy, original_shape_wh, interpolation=cv2.INTER_NEAREST
-                    )
+                    # HW label at full resolution
+                    label_full_size_npy = labels_full_size_nhw[i].cpu().data.numpy()
                     # WH for rle encode
-                    label_rle = rle_encode(np.squeeze(label_upscaled))
+                    label_rle = rle_encode(np.squeeze(label_full_size_npy))
                     label_row_df = pd.DataFrame.from_dict(
                         {
                             "id": [
@@ -396,38 +362,43 @@ def main():
                         [labels_df_dict[dataset_kidney_name], label_row_df],
                         ignore_index=True,
                     )
+                    # Save label full for dice score (HWC with C=1)
                     labels_for_3d[dataset_kidney_name].append(
-                        label_upscaled.astype(bool)
+                        np.expand_dims(label_full_size_npy, axis=-1).astype(bool)
                     )
 
                     # TODO: Extract function(s)
                     diff_on_image = np.copy(full_image)
                     diff_on_image = cv2.cvtColor(diff_on_image, cv2.COLOR_GRAY2BGR)
-                    diff_on_black = np.zeros_like(label_img, np.uint8)
+                    diff_on_black = np.zeros_like(label_img_model_size, np.uint8)
                     diff_on_black = cv2.cvtColor(diff_on_black, cv2.COLOR_GRAY2BGR)
 
                     # Green
                     correct = (
-                        label_img & prediction_thresholded_img
+                        label_img_model_size & prediction_thresholded_img
                     )  # np.uint8 of 0 or 1
                     correct_bool = np.squeeze(correct.astype(bool))
                     diff_on_image[correct_bool] = [0, 255, 0]
                     diff_on_black[correct_bool] = [0, 255, 0]
 
                     # Red
-                    false_positive = (label_img == 0) & prediction_thresholded_img
+                    false_positive = (
+                        label_img_model_size == 0
+                    ) & prediction_thresholded_img
                     false_positive_bool = np.squeeze(false_positive.astype(bool))
                     diff_on_image[false_positive_bool] = [0, 0, 255]
                     diff_on_black[false_positive_bool] = [0, 0, 255]
 
                     # Blue
-                    false_negative = label_img & (prediction_thresholded_img == 0)
+                    false_negative = label_img_model_size & (
+                        prediction_thresholded_img == 0
+                    )
                     false_negative_bool = np.squeeze(false_negative.astype(bool))
                     diff_on_image[false_negative_bool] = [255, 0, 0]
                     diff_on_black[false_negative_bool] = [255, 0, 0]
 
                     image_bgr = cv2.cvtColor(full_image, cv2.COLOR_GRAY2BGR)
-                    label_bgr = cv2.cvtColor(label_img, cv2.COLOR_GRAY2BGR)
+                    label_bgr = cv2.cvtColor(label_img_model_size, cv2.COLOR_GRAY2BGR)
                     predictions_raw_img_bgr = cv2.cvtColor(
                         prediction_raw_img, cv2.COLOR_GRAY2BGR
                     )
@@ -446,7 +417,7 @@ def main():
                     all_in_one = cv2.vconcat([row_one, row_two])
 
                     dice_score = dice_score_class.evaluate(
-                        prediction_thresholded_model_input_size, labels[i]
+                        prediction_upscaled_th, labels_full_size_nhw[i]
                     )
                     print(f"{image_path} {dice_score_class.name} {dice_score:.2f}")
                     dice_2d_scores[dataset_kidney_name].append(dice_score)

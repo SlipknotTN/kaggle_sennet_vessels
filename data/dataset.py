@@ -55,18 +55,19 @@ class BloodVesselDataset(Dataset):
 
         if sample[1]:
             label_path = sample[1]
-            label = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
+            label_full_size = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
             # HW, [0.0, 1.0] range, no channel dimension
-            label = label.astype(np.float32) / 255.0
+            label_full_size = label_full_size.astype(np.float32) / 255.0
             # Transform image and label
-            transformed = self.transform(image=image, mask=label)
+            transformed = self.transform(image=image, mask=label_full_size)
             # Add the channel dimension to the label to CHW
             if len(transformed["mask"].shape) == 2:
                 transformed["mask"] = torch.unsqueeze(transformed["mask"], dim=0)
             image_preprocessed = self.preprocess_function(transformed["image"])
             return {
                 "image": image_preprocessed,
-                "label": transformed["mask"],
+                "label_model_size": transformed["mask"],
+                "label_full_size": label_full_size,  # Converted to Torch
                 "file": image_path,
                 "shape": list(image.shape),
             }
@@ -82,9 +83,10 @@ class BloodVesselDataset(Dataset):
             }
 
 
-class BloodVesselDatasetTTA(BloodVesselDataset):
+class BloodVesselDatasetTest(BloodVesselDataset):
     """
-    Dataset with test time augmentation support (not implemented with albumentation)
+    Dataset with specific features for test like time augmentation support (not implemented with albumentation)
+    and returns label at full size
     """
 
     def __init__(
@@ -180,12 +182,12 @@ class BloodVesselDatasetTTA(BloodVesselDataset):
             # Get label and transform it if available
             if sample[1]:
                 label_path = sample[1]
-                label = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
+                label_full_size = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)
                 # HW, [0.0, 1.0] range, no channel dimension
-                label = label.astype(np.float32) / 255.0
+                label_full_size = label_full_size.astype(np.float32) / 255.0
                 # Transform full image and label
                 transformed_full_image_and_label_dict = self.transform(
-                    image=full_image_3dims, mask=label
+                    image=full_image_3dims, mask=label_full_size
                 )
                 # Add the channel dimension to the label to CHW
                 if len(transformed_full_image_and_label_dict["mask"].shape) == 2:
@@ -197,7 +199,8 @@ class BloodVesselDatasetTTA(BloodVesselDataset):
                 )
                 return {
                     "image": full_image_preprocessed,
-                    "label": transformed_full_image_and_label_dict["mask"],
+                    "label_model_size": transformed_full_image_and_label_dict["mask"],
+                    "label_full_size": label_full_size,  # Converted to Torch
                     "file": image_path,
                     "shape": list(full_image_2dims.shape),
                     "top_left": top_left_preprocessed,

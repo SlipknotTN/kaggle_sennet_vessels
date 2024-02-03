@@ -166,7 +166,7 @@ def main():
             global_step = epoch_id * train_batches + batch_id
             # get the input images and labels
             images = data["image"]
-            labels = data["label"]
+            labels = data["label_model_size"]
 
             if args.debug_augmentation:
                 for image_idx in range(images.shape[0]):
@@ -272,7 +272,7 @@ def main():
                 global_step = epoch_id * train_batches + batch_id
                 # get the input images and labels
                 images = data["image"]
-                labels = data["label"]
+                labels = data["label_model_size"]
 
                 # Move to GPU
                 labels_device = labels.to(device)

@@ -116,16 +116,16 @@ def get_train_transform(config: ConfigParams):
                         A.RandomCrop(
                             config.model_train_input_size,
                             config.model_train_input_size,
-                            p=3.0
+                            p=3.0,
                         ),
                         A.Resize(
                             config.model_train_input_size,
                             config.model_train_input_size,
                             interpolation=cv2.INTER_NEAREST,
-                            p=1.0
+                            p=1.0,
                         ),
                     ],
-                    p=1.0
+                    p=1.0,
                 ),
                 # This is applied only to the image
                 A.RandomBrightnessContrast(
