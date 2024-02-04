@@ -28,10 +28,10 @@ def predict_crops_tta_max(
     # One crop: full image
     # Other crops are zoomed in parts: top_left, top_right, bottom_left, bottom_right and center
     assert tta_mode in [
-        "4+full_max",
-        "5+full_max",
-        "4_max",
-        "5_max"
+        "4+fullmax",
+        "5+fullmax",
+        "4max",
+        "5max"
     ], f"tta_mode {tta_mode} not supported"
 
     # Reference image to put all the predictions resolution: (model_input_size * 2) x (model_input_size * 2)

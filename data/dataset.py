@@ -1,4 +1,5 @@
 import os
+import re
 
 import cv2
 import numpy as np
@@ -105,8 +106,8 @@ class BloodVesselDatasetTest(BloodVesselDataset):
         self.tta_mode = tta_mode
         assert (
             self.tta_mode in [None, ""]
-            or self.tta_mode.startswith("4+full")
-            or self.tta_mode.startswith("5+full")
+            or re.search("^4.*max", self.tta_mode)
+            or re.search("^5.*max", self.tta_mode)
         ), f"tta_mode {self.tta_mode} not supported"
         if self.tta_mode in [None, ""]:
             self.tta_mode = None
@@ -123,7 +124,7 @@ class BloodVesselDatasetTest(BloodVesselDataset):
             # Not TTA
             return super().__getitem__(idx)
 
-        elif self.tta_mode.startswith("4+full") or self.tta_mode.startswith("5+full"):
+        elif re.search("^4.*max", self.tta_mode) or re.search("^5.*max", self.tta_mode):
             # One crop: full image resized at input_size x input_size
             # 4 crops option: 4 crops of input_size x input_size at
             #   top_left, top_right, bottom_left, bottom_right
