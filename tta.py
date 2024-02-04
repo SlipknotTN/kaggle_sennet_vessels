@@ -31,7 +31,7 @@ def predict_crops_tta_max(
         "4+fullmax",
         "5+fullmax",
         "4max",
-        "5max"
+        "5max",
     ], f"tta_mode {tta_mode} not supported"
 
     # Reference image to put all the predictions resolution: (model_input_size * 2) x (model_input_size * 2)
