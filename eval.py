@@ -15,7 +15,6 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-from torch.nn.functional import interpolate
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
