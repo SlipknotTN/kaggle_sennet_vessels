@@ -70,7 +70,7 @@ def do_parsing():
     )
     parser.add_argument(
         "--tta_mode",
-        choices=["4+full_max", "5+full_max"],
+        choices=["4+full_max", "5+full_max", "", "None", "none"],
         required=False,
         default=None,
         help="Test time augmentation mode, don't pass it to don't use TTA",
@@ -117,6 +117,8 @@ def main():
     )
     assert threshold is not None
     tta_mode = args.tta_mode if args.tta_mode is not None else config.tta_mode
+    if tta_mode in ["", "None", "none"]:
+        tta_mode = None
 
     device = get_device()
     model, preprocess_function, inverse_preprocess_function = init_model(config)
@@ -143,7 +145,9 @@ def main():
         for input_path in args.input_paths
     ]
     labels_exists_check = np.all(labels_exists)
-    print(f"Labels are not available for at least one of {args.input_paths}")
+    if labels_exists_check is False:
+        print(f"Labels are not available for at least one of {args.input_paths}")
+        return
     print(
         f"Preparing dataset for inference size w x h: {inference_input_width} x {inference_input_height}"
     )
