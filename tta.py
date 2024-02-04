@@ -30,6 +30,8 @@ def predict_crops_tta_max(
     assert tta_mode in [
         "4+full_max",
         "5+full_max",
+        "4_max",
+        "5_max"
     ], f"tta_mode {tta_mode} not supported"
 
     # Reference image to put all the predictions resolution: (model_input_size * 2) x (model_input_size * 2)
@@ -69,14 +71,18 @@ def predict_crops_tta_max(
     )
 
     # Only max aggregation between different crops and full image is supported: 4 sides crops or 5 including center
-    if tta_mode == "5+full_max":
+    if tta_mode.startswith("5"):
         max_between_crops_pred_ref = torch.maximum(
             not_overlapping_crops_pred_ref, center_crop_pred_ref
         )
     else:
+        # tta with 4 crops
         max_between_crops_pred_ref = not_overlapping_crops_pred_ref
 
-    prediction_raw = torch.maximum(max_between_crops_pred_ref, full_image_pred_ref)
+    if "full" in tta_mode:
+        prediction_raw = torch.maximum(max_between_crops_pred_ref, full_image_pred_ref)
+    else:
+        prediction_raw = max_between_crops_pred_ref
 
     prediction_thresholded = torch.as_tensor(
         prediction_raw > threshold, dtype=prediction_raw.dtype

@@ -70,7 +70,7 @@ def do_parsing():
     )
     parser.add_argument(
         "--tta_mode",
-        choices=["4+full_max", "5+full_max", "", "None", "none"],
+        choices=["4+full_max", "5+full_max", "4_max", "5_max", "None", "none"],
         required=False,
         default=None,
         help="Test time augmentation mode, don't pass it to don't use TTA",
