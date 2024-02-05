@@ -63,7 +63,33 @@ def get_train_transform(config: ConfigParams):
                 ToTensorV2(transpose_mask=True),
             ]
         )
-    elif config.train_augmentation == "my_aug_v2":
+    elif config.train_augmentation == "my_aug_v2a":
+        return A.Compose(
+            [
+                A.Rotate(limit=180, p=1.0),
+                # Zoom level similar to validation, no TTA strictly necessary, but it helps
+                A.Resize(
+                    config.model_train_input_size,
+                    config.model_train_input_size,
+                    interpolation=cv2.INTER_NEAREST,
+                ),
+                # This is applied only to the image
+                A.RandomBrightnessContrast(
+                    brightness_limit=0.33,
+                    contrast_limit=0.33,
+                    brightness_by_max=True,
+                    p=1.0,
+                ),
+                # This is applied only to the image
+                A.InvertImg(p=0.5),
+                A.HorizontalFlip(p=0.5),
+                A.VerticalFlip(p=0.5),
+                A.GridDistortion(p=0.5),
+                A.ToFloat(max_value=255),
+                ToTensorV2(),
+            ]
+        )
+    elif config.train_augmentation == "my_aug_v2b":
         return A.Compose(
             [
                 A.Rotate(limit=180, p=1.0),
