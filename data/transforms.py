@@ -90,6 +90,7 @@ def get_train_transform(config: ConfigParams):
             ]
         )
     elif config.train_augmentation == "my_aug_v2b":
+        # Same of my_aug_v2a without Invert
         return A.Compose(
             [
                 A.Rotate(limit=180, p=1.0),
