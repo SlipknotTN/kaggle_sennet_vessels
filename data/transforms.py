@@ -80,8 +80,6 @@ def get_train_transform(config: ConfigParams):
                     brightness_by_max=True,
                     p=1.0,
                 ),
-                # This is applied only to the image
-                A.InvertImg(p=0.5),
                 A.HorizontalFlip(p=0.5),
                 A.VerticalFlip(p=0.5),
                 A.GridDistortion(p=0.5),
