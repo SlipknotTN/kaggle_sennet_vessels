@@ -116,6 +116,7 @@ class BloodVesselDataset(Dataset):
             return {
                 "image": model_input_preprocessed,
                 "label_model_size": transformed["mask"],
+                # FIXME: This can't work with dataset with different image shapes
                 "label_full_size": label_full_size,  # Converted to Torch
                 "file": exact_index_image_path,
                 "shape": list(images[0].shape),
@@ -207,6 +208,9 @@ class BloodVesselDatasetTest(BloodVesselDataset):
             #   No overlapping between the 4 crops
             # 5 crops option: 5 crops of input_size x input_size at
             #   top_left, top_right, bottom_left, bottom_right and additional center
+
+            # TODO: Iterate in range -1, 0, 1
+            # For each one create crops and full image (transform each crop/full image slice, it means 3 times)
 
             # To create the crops the full image is first resized to (2 * input_size) x (2 * input_size)
             sample = self.samples[idx]

@@ -157,6 +157,7 @@ def main():
         transform=data_transform_test,
         preprocess_function=preprocess_function,
         dataset_with_gt=labels_exists_check,
+        in_channels=config.model_input_channels,
         tta_mode=tta_mode,
     )
     test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
@@ -235,7 +236,8 @@ def main():
                 resize_to_wh = original_shape_wh if args.rescale else None
 
                 # Restore original image values range
-                original_image = inverse_preprocess_function(x_norm=images[i])
+                # Select the first slice and then readd the dimension
+                original_image = inverse_preprocess_function(x_norm=torch.unsqueeze(images[i][0], dim=0))
                 full_image = convert_to_image(original_image, resize_to_wh)
                 label_img_model_size = (
                     convert_to_image(labels_model_size_nchw[i], resize_to_wh)
