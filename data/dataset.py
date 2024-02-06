@@ -9,12 +9,15 @@ from tqdm import tqdm
 
 
 class BloodVesselDataset(Dataset):
-    def __init__(self, selected_dirs, transform, preprocess_function, dataset_with_gt):
+    def __init__(self, selected_dirs, transform, preprocess_function, dataset_with_gt, in_channels=1):
         self.selected_dirs = selected_dirs
         self.transform = transform
         self.preprocess_function = preprocess_function
         self.dataset_with_gt = dataset_with_gt
         self.samples = []
+        self.in_channels = in_channels
+        assert self.in_channels in [1, 3], f"in_channels {in_channels} must be 1 or 3"
+        # TODO: Implement 5 channels
         for selected_dir in selected_dirs:
             images_dir = os.path.join(selected_dir, "images")
             assert os.path.exists(images_dir), f"{images_dir} does not exist"
@@ -49,10 +52,16 @@ class BloodVesselDataset(Dataset):
 
     def __getitem__(self, idx):
         sample = self.samples[idx]
+        exact_index_image_path = sample[0]
 
-        image_path = sample[0]
-        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-        image = np.expand_dims(image, axis=-1)
+        # Get images to reach in_channels, it supports any odd number in principle
+        images = []
+        for slice_stride in range(-int((self.in_channels - 1) / 2), int((self.in_channels - 1) /2) + 1):
+            sample_idx = np.clip(idx + slice_stride, a_min=0, a_max=len(self.samples) - 1)
+            slice_image_path = self.samples[sample_idx][0]
+            slice_image = cv2.imread(slice_image_path, cv2.IMREAD_GRAYSCALE)
+            slice_image = np.expand_dims(slice_image, axis=-1)
+            images.append(slice_image)
 
         if sample[1]:
             label_path = sample[1]
@@ -60,27 +69,61 @@ class BloodVesselDataset(Dataset):
             # HW, [0.0, 1.0] range, no channel dimension
             label_full_size = label_full_size.astype(np.float32) / 255.0
             # Transform image and label
-            transformed = self.transform(image=image, mask=label_full_size)
+            if self.in_channels == 1:
+                transformed = self.transform(image=images[0], mask=label_full_size)
+                model_input_preprocessed = self.preprocess_function(transformed["image"])
+            else:  # self.in_channels == 3:
+                transformed = self.transform(image=images[1], mask=label_full_size,
+                                             image_min_1=images[0], image_plus_1=images[2])
+                # TODO: Do this in one operation
+                exact_index_image_preprocessed = self.preprocess_function(transformed["image"])
+                image_min_1_preprocessed = self.preprocess_function(transformed["image_min_1"])
+                image_plus_1_preprocessed = self.preprocess_function(transformed["image_plus_1"])
+                model_input_preprocessed = torch.concat(
+                    [
+                        exact_index_image_preprocessed,
+                        image_min_1_preprocessed,
+                        image_plus_1_preprocessed
+                    ],
+                    dim=0
+                )
             # Add the channel dimension to the label to CHW
             if len(transformed["mask"].shape) == 2:
                 transformed["mask"] = torch.unsqueeze(transformed["mask"], dim=0)
-            image_preprocessed = self.preprocess_function(transformed["image"])
             return {
-                "image": image_preprocessed,
+                "image": model_input_preprocessed,
                 "label_model_size": transformed["mask"],
                 "label_full_size": label_full_size,  # Converted to Torch
-                "file": image_path,
-                "shape": list(image.shape),
+                "file": exact_index_image_path,
+                "shape": list(images[0].shape),
             }
 
         else:
             # Transform image
-            transformed = self.transform(image=image)
-            image_preprocessed = self.preprocess_function(transformed["image"])
+            if self.in_channels == 1:
+                transformed = self.transform(image=images[0])
+                model_input_preprocessed = self.preprocess_function(transformed["image"])
+            else:  # self.in_channels == 3:
+                transformed = self.transform(
+                    image=images[1],
+                    image_min_1=images[0],
+                    image_plus_1=images[2]
+                )
+                # TODO: Do this in one operation
+                exact_index_image_preprocessed = self.preprocess_function(transformed["image"])
+                image_min_1_preprocessed = self.preprocess_function(transformed["image_min_1"])
+                image_plus_1_preprocessed = self.preprocess_function(transformed["image_plus_1"])
+                model_input_preprocessed = torch.stack([
+                    exact_index_image_preprocessed,
+                    image_min_1_preprocessed,
+                    image_plus_1_preprocessed
+                ],
+                    dim=0
+                )
             return {
-                "image": image_preprocessed,
-                "file": image_path,
-                "shape": list(image.shape),
+                "image": model_input_preprocessed,
+                "file": exact_index_image_path,
+                "shape": list(images[0].shape),
             }
 
 
@@ -98,9 +141,10 @@ class BloodVesselDatasetTest(BloodVesselDataset):
         dataset_with_gt,
         input_size_width,
         input_size_height,
+        in_channels=1,
         tta_mode=None,
     ):
-        super().__init__(selected_dirs, transform, preprocess_function, dataset_with_gt)
+        super().__init__(selected_dirs, transform, preprocess_function, dataset_with_gt, in_channels)
         self.input_size_width = input_size_width
         self.input_size_height = input_size_height
         self.tta_mode = tta_mode

@@ -71,38 +71,38 @@ class UnetAfolabi(nn.Module):
     Unet model from "Fundus Images using Modified U-net Convolutional Neural Network" (Afolabi, 2020)
     """
 
-    def __init__(self, batch_norm: bool = True, dropout: bool = True):
+    def __init__(self, config: ConfigParams):
         super(UnetAfolabi, self).__init__()
-        self.batch_norm = batch_norm
-        self.dropout = dropout
+        self.batch_norm = config.model_batch_norm
+        self.dropout = config.model_dropout
         self.ds_block_1 = ConvBlock(
-            in_channels=1, out_channels=64, num_blocks=1, batch_norm=batch_norm
+            in_channels=config.model_input_channels, out_channels=64, num_blocks=1, batch_norm=self.batch_norm
         )
         self.ds_block_2 = ConvBlock(
-            in_channels=64, out_channels=64, num_blocks=3, batch_norm=batch_norm
+            in_channels=64, out_channels=64, num_blocks=3, batch_norm=self.batch_norm
         )
         self.ds_block_3 = ConvBlock(
-            in_channels=64, out_channels=64, num_blocks=3, batch_norm=batch_norm
+            in_channels=64, out_channels=64, num_blocks=3, batch_norm=self.batch_norm
         )
         self.ds_block_4 = ConvBlock(
-            in_channels=64, out_channels=64, num_blocks=3, batch_norm=batch_norm
+            in_channels=64, out_channels=64, num_blocks=3, batch_norm=self.batch_norm
         )
         self.bottom = ConvBlock(
-            in_channels=64, out_channels=64, num_blocks=3, batch_norm=batch_norm
+            in_channels=64, out_channels=64, num_blocks=3, batch_norm=self.batch_norm
         )
         self.max_pooling = nn.MaxPool2d(kernel_size=2, stride=2)
         self.upsampling_2x = nn.UpsamplingNearest2d(scale_factor=2.0)
         self.us_block_4 = ConvBlock(
-            in_channels=128, out_channels=32, num_blocks=3, batch_norm=batch_norm
+            in_channels=128, out_channels=32, num_blocks=3, batch_norm=self.batch_norm
         )
         self.us_block_3 = ConvBlock(
-            in_channels=96, out_channels=32, num_blocks=3, batch_norm=batch_norm
+            in_channels=96, out_channels=32, num_blocks=3, batch_norm=self.batch_norm
         )
         self.us_block_2 = ConvBlock(
-            in_channels=96, out_channels=32, num_blocks=3, batch_norm=batch_norm
+            in_channels=96, out_channels=32, num_blocks=3, batch_norm=self.batch_norm
         )
         self.us_block_1 = ConvBlock(
-            in_channels=96, out_channels=32, num_blocks=3, batch_norm=batch_norm
+            in_channels=96, out_channels=32, num_blocks=3, batch_norm=self.batch_norm
         )
         self.last_conv = nn.Conv2d(
             in_channels=32, out_channels=1, kernel_size=(1, 1), padding=0
@@ -200,9 +200,7 @@ def init_smp_model(config: ConfigParams) -> nn.Module:
 
 def init_model(config: ConfigParams) -> Tuple[nn.Module, Any, Any]:
     if config.model_name == "unet_afolabi":
-        model = UnetAfolabi(
-            batch_norm=config.model_batch_norm, dropout=config.model_dropout
-        )
+        model = UnetAfolabi(config)
         preprocessing_fn = preprocess_min_max
         inverse_preprocessing_fn = inverse_preprocess_min_max
     elif config.model_smp_model is not None:

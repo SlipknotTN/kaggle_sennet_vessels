@@ -92,12 +92,14 @@ def main():
         data_transform_train,
         preprocess_function=preprocess_function,
         dataset_with_gt=True,
+        in_channels=config.model_input_channels
     )
     val_dataset = BloodVesselDataset(
         [os.path.join(args.dataset_path, val_dir) for val_dir in config.val_dirs],
         data_transform_val,
         preprocess_function=preprocess_function,
         dataset_with_gt=True,
+        in_channels=config.model_input_channels
     )
     train_dataloader = DataLoader(
         train_dataset, batch_size=config.train_batch_size, num_workers=4, shuffle=True
@@ -128,7 +130,7 @@ def main():
         torch.zeros(
             [
                 config.train_batch_size,
-                1,
+                config.model_input_channels,
                 config.model_train_input_size,
                 config.model_train_input_size,
             ],
@@ -169,6 +171,7 @@ def main():
             labels = data["label_model_size"]
 
             if args.debug_augmentation:
+                # FIXME: Support input image with more than one slice
                 for image_idx in range(images.shape[0]):
                     image_denorm = inverse_preprocess_function(x_norm=images[image_idx])
                     original_file = data["file"][image_idx]
@@ -249,7 +252,8 @@ def main():
                     writer,
                     "train",
                     global_step,
-                    inverse_preprocess_function(images[0]),
+                    # Select the first slice and readd the channel dimension
+                    inverse_preprocess_function(torch.unsqueeze(images[0][0], dim=0)),
                     labels[0],
                     preds_sigmoid[0],
                 )
@@ -299,7 +303,8 @@ def main():
                         writer,
                         "val",
                         global_step,
-                        inverse_preprocess_function(images[0]),
+                        # Select the first slice and readd the channel dimension
+                        inverse_preprocess_function(torch.unsqueeze(images[0][0], dim=0)),
                         labels[0],
                         preds_sigmoid[0],
                     )
