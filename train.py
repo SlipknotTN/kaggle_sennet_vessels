@@ -92,14 +92,14 @@ def main():
         data_transform_train,
         preprocess_function=preprocess_function,
         dataset_with_gt=True,
-        in_channels=config.model_input_channels
+        in_channels=config.model_input_channels,
     )
     val_dataset = BloodVesselDataset(
         [os.path.join(args.dataset_path, val_dir) for val_dir in config.val_dirs],
         data_transform_val,
         preprocess_function=preprocess_function,
         dataset_with_gt=True,
-        in_channels=config.model_input_channels
+        in_channels=config.model_input_channels,
     )
     train_dataloader = DataLoader(
         train_dataset, batch_size=config.train_batch_size, num_workers=4, shuffle=True
@@ -304,7 +304,9 @@ def main():
                         "val",
                         global_step,
                         # Select the first slice and readd the channel dimension
-                        inverse_preprocess_function(torch.unsqueeze(images[0][0], dim=0)),
+                        inverse_preprocess_function(
+                            torch.unsqueeze(images[0][0], dim=0)
+                        ),
                         labels[0],
                         preds_sigmoid[0],
                     )

@@ -76,7 +76,10 @@ class UnetAfolabi(nn.Module):
         self.batch_norm = config.model_batch_norm
         self.dropout = config.model_dropout
         self.ds_block_1 = ConvBlock(
-            in_channels=config.model_input_channels, out_channels=64, num_blocks=1, batch_norm=self.batch_norm
+            in_channels=config.model_input_channels,
+            out_channels=64,
+            num_blocks=1,
+            batch_norm=self.batch_norm,
         )
         self.ds_block_2 = ConvBlock(
             in_channels=64, out_channels=64, num_blocks=3, batch_norm=self.batch_norm

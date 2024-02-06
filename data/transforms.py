@@ -26,10 +26,7 @@ def get_train_transform(config: ConfigParams):
                 A.ToFloat(max_value=255),
                 ToTensorV2(transpose_mask=True),
             ],
-            additional_targets={
-                "image_min_1": "image",
-                "image_plus_1": "image"
-            }
+            additional_targets={"image_min_1": "image", "image_plus_1": "image"},
         )
     elif config.train_augmentation == "my_2.5d_aug":
         # Augmentations from https://www.kaggle.com/code/yoyobar/2-5d-cutting-model-baseline-training/notebook
@@ -53,10 +50,7 @@ def get_train_transform(config: ConfigParams):
                 A.ToFloat(max_value=255),
                 ToTensorV2(transpose_mask=True),
             ],
-            additional_targets={
-                "image_min_1": "image",
-                "image_plus_1": "image"
-            }
+            additional_targets={"image_min_1": "image", "image_plus_1": "image"},
         )
     elif config.train_augmentation == "overfit":
         # Overfit test
@@ -70,10 +64,7 @@ def get_train_transform(config: ConfigParams):
                 A.ToFloat(max_value=255),
                 ToTensorV2(transpose_mask=True),
             ],
-            additional_targets={
-                "image_min_1": "image",
-                "image_plus_1": "image"
-            }
+            additional_targets={"image_min_1": "image", "image_plus_1": "image"},
         )
     elif config.train_augmentation == "my_aug_v2a":
         return A.Compose(
@@ -100,10 +91,7 @@ def get_train_transform(config: ConfigParams):
                 A.ToFloat(max_value=255),
                 ToTensorV2(),
             ],
-            additional_targets={
-                "image_min_1": "image",
-                "image_plus_1": "image"
-            }
+            additional_targets={"image_min_1": "image", "image_plus_1": "image"},
         )
     elif config.train_augmentation == "my_aug_v2b":
         # Same of my_aug_v2a without Invert
@@ -129,10 +117,7 @@ def get_train_transform(config: ConfigParams):
                 A.ToFloat(max_value=255),
                 ToTensorV2(),
             ],
-            additional_targets={
-                "image_min_1": "image",
-                "image_plus_1": "image"
-            }
+            additional_targets={"image_min_1": "image", "image_plus_1": "image"},
         )
     elif config.train_augmentation == "my_aug_v3":
         return A.Compose(
@@ -185,10 +170,7 @@ def get_train_transform(config: ConfigParams):
                 A.ToFloat(max_value=255),
                 ToTensorV2(),
             ],
-            additional_targets={
-                "image_min_1": "image",
-                "image_plus_1": "image"
-            }
+            additional_targets={"image_min_1": "image", "image_plus_1": "image"},
         )
     else:
         raise Exception(f"Augmentation {config.train_augmentation} not suppported")
@@ -205,10 +187,7 @@ def get_val_transform(config: ConfigParams):
             A.ToFloat(max_value=255),
             ToTensorV2(),
         ],
-        additional_targets={
-            "image_min_1": "image",
-            "image_plus_1": "image"
-        }
+        additional_targets={"image_min_1": "image", "image_plus_1": "image"},
     )
 
 
@@ -223,8 +202,5 @@ def get_test_transform(input_size_height: int, input_size_width: int):
             A.ToFloat(max_value=255),
             ToTensorV2(),
         ],
-        additional_targets={
-            "image_min_1": "image",
-            "image_plus_1": "image"
-        }
+        additional_targets={"image_min_1": "image", "image_plus_1": "image"},
     )
