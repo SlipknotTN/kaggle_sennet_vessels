@@ -174,7 +174,7 @@ def main():
             os.path.join(args.output_dir, f"images_{kidney_subset_name}"),
             exist_ok=False,
         )
-    os.makedirs(os.path.join(args.output_dir, "3d_npy"), exist_ok=False)
+    os.makedirs(os.path.join(args.output_dir, "3d"), exist_ok=False)
 
     dice_score_class: Metric = DiceScore(to_monitor=False)
 
@@ -500,7 +500,7 @@ def main():
             kidney_prediction_3d = np.stack(kidney_predictions_for_3d, axis=0)  # CHW
             np.save(
                 os.path.join(
-                    args.output_dir, "3d_npy", f"{dataset_kidney_name}_prediction.npy"
+                    args.output_dir, "3d", f"{dataset_kidney_name}_prediction.npy"
                 ),
                 kidney_prediction_3d,
             )
@@ -510,7 +510,7 @@ def main():
                 kidney_label_3d = np.stack(kidney_labels_for_3d, axis=0)  # CHW
                 np.save(
                     os.path.join(
-                        args.output_dir, "3d_npy", f"{dataset_kidney_name}_label.npy"
+                        args.output_dir, "3d", f"{dataset_kidney_name}_label.npy"
                     ),
                     kidney_label_3d,
                 )
