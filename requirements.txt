@@ -22,3 +22,5 @@ torch==2.1.2
 torchfile==0.1.0
 torchvision==0.16.2
 tqdm==4.43.0
+scipy~=1.11.4
+open3d~=0.18.0
