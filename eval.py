@@ -367,10 +367,8 @@ def main():
                         [labels_df_dict[dataset_kidney_name], label_row_df],
                         ignore_index=True,
                     )
-                    # Save label full for dice score (HWC with C=1)
-                    labels_for_3d[dataset_kidney_name].append(
-                        np.expand_dims(label_full_size_npy, axis=-1).astype(bool)
-                    )
+                    # Save label full for dice score (HW)
+                    labels_for_3d[dataset_kidney_name].append(label_full_size_npy.astype(bool))
 
                     # TODO: Extract function(s)
                     diff_on_image = np.copy(full_image)
@@ -497,22 +495,24 @@ def main():
         print(f"{dataset_kidney_name}: saving 3d numpy prediction and label...")
         if args.save_3d_predictions:
             kidney_predictions_for_3d = predictions_for_3d[dataset_kidney_name]
-            kidney_prediction_3d = np.stack(kidney_predictions_for_3d, axis=0)  # CHW
+            kidney_prediction_3d_zyx = np.stack(kidney_predictions_for_3d, axis=0)  # CHW (slices x height x width)
+            kidney_prediction_3d_xyz = np.transpose(kidney_prediction_3d_zyx, (2, 1, 0))
             np.save(
                 os.path.join(
-                    args.output_dir, "3d", f"{dataset_kidney_name}_prediction.npy"
+                    args.output_dir, "3d", f"{dataset_kidney_name}_prediction_xyz.npy"
                 ),
-                kidney_prediction_3d,
+                kidney_prediction_3d_xyz,
             )
         if args.save_3d_labels:
             if labels_exists_check:
                 kidney_labels_for_3d = labels_for_3d[dataset_kidney_name]
-                kidney_label_3d = np.stack(kidney_labels_for_3d, axis=0)  # CHW
+                kidney_label_3d_zyx = np.stack(kidney_labels_for_3d, axis=0)  # CHW (slices x height x width)
+                kidney_label_3d_xyz = np.transpose(kidney_label_3d_zyx, (2, 1, 0))
                 np.save(
                     os.path.join(
-                        args.output_dir, "3d", f"{dataset_kidney_name}_label.npy"
+                        args.output_dir, "3d", f"{dataset_kidney_name}_label_xyz.npy"
                     ),
-                    kidney_label_3d,
+                    kidney_label_3d_xyz,
                 )
             else:
                 print(

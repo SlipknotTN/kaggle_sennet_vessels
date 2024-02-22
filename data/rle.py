@@ -14,7 +14,7 @@ def rle_encode(img):
         img: numpy array, 1 - mask, 0 - background
 
     Returns:
-        run length as string formated
+        run length as string formatted
     """
     pixels = img.flatten()
     if np.max(pixels) == np.min(pixels) == 0:
