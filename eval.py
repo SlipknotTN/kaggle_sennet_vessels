@@ -237,7 +237,9 @@ def main():
 
                 # Restore original image values range
                 # Select the first slice and then readd the dimension
-                original_image = inverse_preprocess_function(x_norm=torch.unsqueeze(images[i][0], dim=0))
+                original_image = inverse_preprocess_function(
+                    x_norm=torch.unsqueeze(images[i][0], dim=0)
+                )
                 full_image = convert_to_image(original_image, resize_to_wh)
                 label_img_model_size = (
                     convert_to_image(labels_model_size_nchw[i], resize_to_wh)
@@ -368,7 +370,9 @@ def main():
                         ignore_index=True,
                     )
                     # Save label full for dice score (HW)
-                    labels_for_3d[dataset_kidney_name].append(label_full_size_npy.astype(bool))
+                    labels_for_3d[dataset_kidney_name].append(
+                        label_full_size_npy.astype(bool)
+                    )
 
                     # TODO: Extract function(s)
                     diff_on_image = np.copy(full_image)
@@ -495,7 +499,9 @@ def main():
         print(f"{dataset_kidney_name}: saving 3d numpy prediction and label...")
         if args.save_3d_predictions:
             kidney_predictions_for_3d = predictions_for_3d[dataset_kidney_name]
-            kidney_prediction_3d_zyx = np.stack(kidney_predictions_for_3d, axis=0)  # CHW (slices x height x width)
+            kidney_prediction_3d_zyx = np.stack(
+                kidney_predictions_for_3d, axis=0
+            )  # CHW (slices x height x width)
             kidney_prediction_3d_xyz = np.transpose(kidney_prediction_3d_zyx, (2, 1, 0))
             np.save(
                 os.path.join(
@@ -506,7 +512,9 @@ def main():
         if args.save_3d_labels:
             if labels_exists_check:
                 kidney_labels_for_3d = labels_for_3d[dataset_kidney_name]
-                kidney_label_3d_zyx = np.stack(kidney_labels_for_3d, axis=0)  # CHW (slices x height x width)
+                kidney_label_3d_zyx = np.stack(
+                    kidney_labels_for_3d, axis=0
+                )  # CHW (slices x height x width)
                 kidney_label_3d_xyz = np.transpose(kidney_label_3d_zyx, (2, 1, 0))
                 np.save(
                     os.path.join(

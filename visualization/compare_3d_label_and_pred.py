@@ -1,6 +1,7 @@
 import argparse
+
 import numpy as np
-import matplotlib.pyplot as plt
+import open3d as o3d
 from scipy.ndimage import zoom
 
 
@@ -10,10 +11,25 @@ def do_parsing():
         description="Compare two 3D shapes",
     )
     parser.add_argument(
-        "--label_file", required=True, type=str, help="Ground truth numpy array 3D shaped filepath"
+        "--label_file",
+        required=True,
+        type=str,
+        help="Ground truth numpy array 3D shaped filepath",
     )
     parser.add_argument(
-        "--pred_file", required=True, type=str, help="Ground truth numpy array 3D shaped filepath"
+        "--pred_file",
+        required=True,
+        type=str,
+        help="Ground truth numpy array 3D shaped filepath",
+    )
+    parser.add_argument(
+        "--rescale_factor",
+        required=True,
+        type=float,
+        help="Rescale factor to avoid OOM, e.g. 0.1",
+    )
+    parser.add_argument(
+        "--output_pcd_file", required=False, type=str, help="Output pcd filepath"
     )
     args = parser.parse_args()
     return args
@@ -23,67 +39,64 @@ def main():
     args = do_parsing()
     print(args)
 
-    print("Loading label volume")
-    label_volume = np.load(args.label_file)
-    print(f"Loaded label 3D shape num_slices x 2D height x 2D width (zyx): {label_volume.shape}")
-    rescaled_label_volume = zoom(label_volume, (0.1, 0.1, 0.1))
-    print(f"Rescaled label 3D shape num_slices x 2D height x 2D width (zyx): {rescaled_label_volume.shape}")
-    del label_volume
+    print(f"Loading label volume from {args.label_file}")
+    label_volume_xyz = np.load(args.label_file)
+    print(
+        f"Loaded label 3D shape 2D width x 2D height X num_slices (xyz): {label_volume_xyz.shape}"
+    )
+    rescaled_label_volume = zoom(
+        label_volume_xyz,
+        (args.rescale_factor, args.rescale_factor, args.rescale_factor),
+    )
+    print(
+        f"Rescaled label 3D shape 2D width x 2D height X num_slices (xyz): {rescaled_label_volume.shape}"
+    )
+    del label_volume_xyz
 
-    print("Loading prediction volume")
-    pred_volume = np.load(args.pred_file)
-    print(f"Loaded pred 3D shape num_slices x 2D height x 2D width (zyx): {pred_volume.shape}")
-    rescaled_pred_volume = zoom(pred_volume, (0.1, 0.1, 0.1))
-    print(f"Rescaled pred 3D shape num_slices x 2D height x 2D width (zyx): {rescaled_pred_volume.shape}")
-    del pred_volume
+    print(f"Loading prediction volume from {args.pred_file}")
+    pred_volume_xyz = np.load(args.pred_file)
+    print(
+        f"Loaded pred 3D shape 2D width x 2D height X num_slices (xyz): {pred_volume_xyz.shape}"
+    )
+    rescaled_pred_volume = zoom(
+        pred_volume_xyz, (args.rescale_factor, args.rescale_factor, args.rescale_factor)
+    )
+    print(
+        f"Rescaled pred 3D shape 2D width x 2D height X num_slices (xyz): {rescaled_pred_volume.shape}"
+    )
+    del pred_volume_xyz
 
     assert rescaled_pred_volume.shape == rescaled_label_volume.shape
 
-    x_tp_list = []
-    y_tp_list = []
-    z_tp_list = []
-    x_fp_list = []
-    y_fp_list = []
-    z_fp_list = []
-    x_fn_list = []
-    y_fn_list = []
-    z_fn_list = []
-    for z in range(rescaled_label_volume.shape[0]):
-        for y in range(rescaled_label_volume.shape[1]):
-            for x in range(rescaled_label_volume.shape[2]):
-                if rescaled_pred_volume[z][y][x] > 0.0 and rescaled_label_volume[z][y][x] > 0.0:
-                    x_tp_list.append(x)
-                    y_tp_list.append(y)
-                    z_tp_list.append(z)
-                if rescaled_pred_volume[z][y][x] > 0.0 and rescaled_label_volume[z][y][x] == 0.0:
-                    x_fp_list.append(x)
-                    y_fp_list.append(y)
-                    z_fp_list.append(z)
-                if rescaled_pred_volume[z][y][x] == 0.0 and rescaled_label_volume[z][y][x] > 0.0:
-                    x_fn_list.append(x)
-                    y_fn_list.append(y)
-                    z_fn_list.append(z)
+    # Draw point cloud with green TP, blue FN, red FP
+    tp_xyz_coords = np.argwhere(
+        (rescaled_pred_volume > 0.0) & (rescaled_label_volume > 0.0)
+    )
+    fn_xyz_coords = np.argwhere(
+        (rescaled_pred_volume == 0.0) & (rescaled_label_volume > 0.0)
+    )
+    fp_xyz_coords = np.argwhere(
+        (rescaled_pred_volume > 0.0) & (rescaled_label_volume == 0.0)
+    )
+    tp_xyz_colors = np.zeros_like(tp_xyz_coords)
+    tp_xyz_colors[:, :] = [0.0, 1.0, 0.0]
+    fn_xyz_colors = np.zeros_like(fn_xyz_coords)
+    fn_xyz_colors[:, :] = [0.0, 0.0, 1.0]
+    fp_xyz_colors = np.zeros_like(fp_xyz_coords)
+    fp_xyz_colors[:, :] = [1.0, 0.0, 0.0]
 
-    print("Visualizing 3D volume comparison as voxels")
-    colors = np.empty(rescaled_pred_volume.shape, dtype=object)
-    # TP
-    colors[rescaled_pred_volume > 0.0 and rescaled_label_volume > 0.0] = 'green'
-    # FP
-    colors[rescaled_pred_volume > 0.0 and rescaled_label_volume == 0.0] = 'red'
-    # FN
-    colors[rescaled_pred_volume == 0.0 and rescaled_label_volume > 0.0] = 'blue'
-    ax = plt.figure().add_subplot(projection='3d')
-    ax.voxels(np.max(rescaled_pred_volume, rescaled_label_volume), facecolors=colors)
-    plt.show()
-
-    print("Visualizing 3D volume as point cloud")
-    fig = plt.figure(figsize=(10, 10))
-    ax = fig.add_subplot(111, projection='3d')
-    # TODO: Draw smaller points
-    ax.scatter(x_tp_list, y_tp_list, z_tp_list, c="green")
-    ax.scatter(x_fp_list, y_fp_list, z_fp_list, c="red")
-    ax.scatter(x_fn_list, y_fn_list, z_fn_list, c="blue")
-    plt.show()
+    xyz_coords = np.concatenate([tp_xyz_coords, fn_xyz_coords, fp_xyz_coords], axis=0)
+    xyz_colors = np.concatenate([tp_xyz_colors, fn_xyz_colors, fp_xyz_colors], axis=0)
+    # Save point cloud to PCD format, o3d visualizer is faster than matplotlib
+    print(f"XYZ npy shape: {xyz_coords.shape}")
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(xyz_coords)
+    pcd.colors = o3d.utility.Vector3dVector(xyz_colors)
+    o3d.visualization.draw_geometries([pcd])
+    if args.output_pcd_file:
+        print(f"Saving PCD file to {args.output_pcd_file}")
+        o3d.io.write_point_cloud(args.output_pcd_file, pcd)
+        print(f"PCD file save to {args.output_pcd_file}")
 
 
 if __name__ == "__main__":

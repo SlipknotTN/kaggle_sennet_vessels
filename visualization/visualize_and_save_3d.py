@@ -5,8 +5,8 @@ Coordinate system: xyz left hand, z-up.
 Slices (z) going from bottom to up
 """
 import argparse
-import numpy as np
 
+import numpy as np
 import open3d as o3d
 from scipy.ndimage import zoom
 
@@ -23,7 +23,10 @@ def do_parsing():
         "--output_pcd_file", required=False, type=str, help="Output pcd filepath"
     )
     parser.add_argument(
-        "--rescale_factor", required=True, type=float, help="Rescale factor to avoid OOM, e.g. 0.1"
+        "--rescale_factor",
+        required=True,
+        type=float,
+        help="Rescale factor to avoid OOM, e.g. 0.1",
     )
     args = parser.parse_args()
     return args
@@ -35,11 +38,17 @@ def main():
 
     print("fLoading volume from {args.input_file}")
     volume_xyz = np.load(args.input_file)
-    print(f"Loaded 3D shape 2D width x 2D height X num_slices (xyz): {volume_xyz.shape}")
+    print(
+        f"Loaded 3D shape 2D width x 2D height X num_slices (xyz): {volume_xyz.shape}"
+    )
 
     print("Rescaling volume")
-    rescaled_volume = zoom(volume_xyz, (args.rescale_factor, args.rescale_factor, args.rescale_factor))
-    print(f"Rescaled 3D shape 2D width x 2D height X num_slices (xyz): {rescaled_volume.shape}")
+    rescaled_volume = zoom(
+        volume_xyz, (args.rescale_factor, args.rescale_factor, args.rescale_factor)
+    )
+    print(
+        f"Rescaled 3D shape 2D width x 2D height X num_slices (xyz): {rescaled_volume.shape}"
+    )
     del volume_xyz
 
     # Ground truth 3D points (1.0 value), set RED RGB color
