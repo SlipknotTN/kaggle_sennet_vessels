@@ -49,13 +49,13 @@ Colors:
 
 #### kidney_3 sparse ground truth Vs model V47
 
-Slice 163/1035 - Dice score 0.42 (a lot of false negatives)
+Slice 170/1035 - Dice score 0.42 (a lot of false negatives)
 
-![Slice 163 kidney 3 space V47](./docs/v47_v3s_0169_dice_score_0.42.png)
+![Slice 170 kidney 3 space V47](./docs/v47_v3s_0169_dice_score_0.42.png "v47_v3s_0169")
 
 Slice 785/1035 - Dice score 0.80
 
-![Slice 785 kidney 3 sparse V47](./docs/v47_v3s_0784_dice_score_0.80.png)
+![Slice 785 kidney 3 sparse V47](./docs/v47_v3s_0784_dice_score_0.80.png "v47_v3s_0784")
 
 Comment: the model works well with small vessels, but it completely ignores
 the big one on the left. This is more evident with the 3D visualization below.
@@ -73,6 +73,6 @@ Colors:
 
 Here we can see where the false negatives are concentrated
 
-<img src="./docs/kidney_3_sparse_label_vs_v47.gif" alt="Kidney sparse 3 GT Vs V47" width="480" height="480"/>
+![Kidney sparse 3 GT Vs V47](./docs/kidney_3_sparse_label_vs_v47.gif "Kidney sparse 3 GT Vs V47")
 
 TODO: Add an example with dice loss to highlight the different behavior on raw values
