@@ -16,20 +16,30 @@ TODO: Describe the kidney IDs and shortnames
 
 ## Results
 
-### Table
+### Ranking
 
-|     Model      | Train dataset |  Test dataset  | Test avg 2D dice score | Test Surface dice score | Public LB  | Private LB |
-|----------------|---------------|----------------|------------------------|-------------------------|------------|------------|
-| Submission V47 |   1d          |      3s        |       0.589            |        0.593            |   0.585    |   0.491    |
+Private score descending order
 
+|     Model             |  Val dataset   | Val avg 2D dice score  | Val surface dice score | Public LB  | Private LB |   Notes    |
+|-----------------------|----------------|------------------------|------------------------|------------|------------|------------|
+| (Late) Submission V50 |      3s        |       0.433            |        0.494           |   0.552    |   0.500    | Late submission |
+| Submission V48        |      3s        |       0.534            |        0.575           |   0.574    |   0.493    | Best submission before the deadline, not selected |
+| Submission V47        |      3s        |       0.589            |        0.593           |   0.585    |   0.491    | Best selection for the challenge, rank 158/1149 |
+| Submission V46        |      3s        |       0.593            |        0.592           |   0.579    |   0.462    | Selected for the challenge  |
 
-V47:
-- Train resolution: 512x512
-- Train augmentation: my_aug_v2b
-- Loss: focal loss
-- Test resolution: 768x864
-- Test augmentation: tta_5max
-- Threshold 0.4 
+TODO: Add other late submissions to highlight volatile results. Misalignment between val dataset and private test
+
+Note: I have run the same trainings offline in my machines, but the results are identical although practically similar 
+on the test dataset. This behavior was not fixed even when forcing determinism.
+
+### Models' details
+
+|                       |    Train dataset   |   Train resolution | Train augmentation |    Loss    | Test resolution | Test augmentation | Threshold |
+|-----------------------|--------------------|--------------------|--------------------|------------|-----------------|-------------------|-----------|
+| (Late) Submission V50 |   1d+1v+2          |      512x512       |       my_aug_v2b   | Dice loss  |   1024x1024     |      tta 5+max     |     0.1   |
+| Submission V48        |    1d              |      512x512       |       my_aug_v2b   | Dice loss  |   1024x1024     |      tta 5+max     |     0.1   |
+| Submission V47        |  1d                |      512x512       |       my_aug_v2b   | Focal loss |   768x864       |      tta 5+max     |     0.4   |
+| Submission V46        |  1d                |      512x512       |       my_aug_v2b   | Dice loss  |   768x864       |      tta 5+max     |     0.1   |
 
 
 ### 2D comparison
