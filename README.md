@@ -22,19 +22,25 @@ Private score descending order
 
 |     Model             |  Val dataset   | Val avg 2D dice score  | Val surface dice score | Public LB  | Private LB |   Notes    |
 |-----------------------|----------------|------------------------|------------------------|------------|------------|------------|
-| (Late) Submission V50 |      3s        |       0.433            |        0.494           |   0.552    |   0.500    | Late submission |
+| (Late) Submission V50 |      3s        |       0.269            |        0.398           |   0.552    |   0.500    | Late submission |
 | Submission V48        |      3s        |       0.534            |        0.575           |   0.574    |   0.493    | Best submission before the deadline, not selected |
 | Submission V47        |      3s        |       0.589            |        0.593           |   0.585    |   0.491    | Best selection for the challenge, rank 158/1149 |
-| (Late) Submission V55 |      3s        |       TODO             |        TODO            |   0.566    |   0.480    | Late submission |
+| (Late) Submission V55 |      3s        |       0.433            |        0.494           |   0.566    |   0.480    | Late submission |
 | Submission V46        |      3s        |       0.593            |        0.592           |   0.579    |   0.462    | Selected for the challenge  |
-| (Late) Submission V53 |      3s        |       TODO             |        TODO            |   0.561    |   0.400    | Late submission  |
+| (Late) Submission V53 |      3s        |       0.046 ?!         |        0.061 ?!        |   0.561    |   0.400    | Late submission  |
 | Submission V41        |      3s        |       0.550            |        0.401           |   0.493    |   0.374    | tta 5+full_max  |
-| (Late) Submission V54 |      3s        |       TODO             |        TODO            |   0.421    |   0.365    | Late submission  |
+| (Late) Submission V54 |      3s        |       0.425            |        0.420           |   0.421    |   0.365    | Late submission  |
 | Submission V40        |      3s        |       0.579            |        0.326           |   0.291    |   0.251    | No tta  |
 
 Note: I have run the same trainings offline in my machines, but the results are identical although practically similar 
-on the test dataset. This behavior was not fixed even when forcing determinism.
+on the test dataset. This behavior was not fixed even when forcing determinism (determinism is working).
 However the best models offline were the best online as well.
+
+TODO: Talk about bigger training dataset doesn't always improve the performances
+
+TODO: Comment V55 Vs V50
+
+TODO: Why V53 so low?
 
 TODO: Comment volatily
 
