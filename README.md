@@ -6,13 +6,55 @@
 
 TODO: Describe the kidney IDs and shortnames
 
+Resolution
+Number of slices
+
 ## My solutions
+
+### Repository structure
+
+- **configs**: cfg files used to train the models.
+- **data**: scripts necessary to process the dataset.
+- **docs**: images for documentation scope.
+- **metrics**: metrics code implementation.
+- **papers**: relevant papers.
+- **visualization**: visualization utilities code implementation.
+- **train.py**: train script.
+- **eval.py**: evaluation/test script
+- other python files: utilities used by `train.py` and `eval.py`.
+
+### Possible solution approaches
+
+#### 2D
+
+Model input: single 2D slice.
+Model output: single 2D slice.
+
+Basically the vessel shape information across different slices is ignored.
+However this simple approach had good overall results in the competition.
+
+#### 2.5D
+
+Model input: multiple 2D consecutive slices (e.g. 3 or 5).
+Model output: single 2D slice.
+
+It partially uses the vessels shape information across slices, but it doesn't really give a boost
+in the accuracy.
+
+#### 3D
+
+Model input: full 3D kidney.
+Model output: full 3D kidney.
+
+Not tried, although looking at the competition results it seems not necessary to reach the higher rankings.
 
 ### Backbones and libraries
 
-### 2D
+- Custom Unet implementation following "Fundus Images using Modified U-net Convolutional Neural Network" (Afolabi, 2020)
+- Unet based on ResNet50 from the "segmentation_models_pytorch" library.
 
-### 2.5D
+The most relevant experiments were made with and smp_encoder = resnext50_32x4d and imagenet weights.
+If not explicitly mentioned, these are the used configurations.
 
 ## Results
 
@@ -32,21 +74,20 @@ Private score descending order
 | (Late) Submission V54 |      3s        |       0.425            |        0.420           |   0.421    |   0.365    | Late submission  |
 | Submission V40        |      3s        |       0.579            |        0.326           |   0.291    |   0.251    | No tta  |
 
-Note: I have run the same trainings offline in my machines, but the results are identical although practically similar 
+Note: I have run the same trainings offline in my machines, but the results are not identical although practically similar 
 on the test dataset. This behavior was not fixed even when forcing determinism (determinism is working).
-However the best models offline were the best online as well.
+However, the best models offline were the best online as well.
 
 TODO: Talk about bigger training dataset doesn't always improve the performances
 
 TODO: Comment V55 Vs V50
 
-TODO: Why V53 so low?
+TODO: Why V53 so low? The metrics during the training were very low, some lines artifact are always
+visible in the prediction. Local results are coherent, it is not explainable why the model performs so well in the cloud on the test.
 
 TODO: Comment volatily
 
 TODO: Comment impact of tta on surface dice and tta no full.
-
-TODO: Run missing submissions locally
 
 ### Models' details
 
@@ -66,7 +107,9 @@ TODO: Comparison between augmentations. my_aug_v2b was the best in exact compari
 
 TODO: Explain major improvements like upscaling functions
 
-### 2D comparison
+## Visualization
+
+### Compare 2D slices
 
 Image tiles descriptions:
 - Top left: original image
@@ -94,7 +137,7 @@ Slice 785/1035 - Dice score 0.80
 Comment: the model works well with small vessels, but it completely ignores
 the big one on the left. This is more evident with the 3D visualization below.
 
-### 3D comparison
+### Compare full 3D kidney predictions
 
 The 3D points clouds are rescaled to 10% for faster processing
 
