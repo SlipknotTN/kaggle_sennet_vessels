@@ -12,7 +12,29 @@ in order get knowledge about medical imaging tasks.
 This was a [code competition](www.kaggle.com/competitions/blood-vessel-segmentation/overview/code-requirements) which requires
 to run the code in a notebook in the Kaggle cloud. However, I have used this repository to try my solutions offline before running on the cloud.
 
-### Task and dataset
+## Summary
+- [Task and dataset](#task-and-dataset)
+  - [Data format](#data-format)
+  - [Train dataset](#train-dataset)
+  - [Hidden test](#hidden-test)
+  - [Evaluation](#evaluation)
+  - [Comment](#comment)
+- [My solutions](#my-solutions)
+  - [Repository structure](#repository-structure)
+  - [Possible solutions approaches](#possible-solution-approaches)
+    - [2D](#2d)
+    - [2.5D](#25d)
+    - [3D](#3d)
+  - [Backbones and libraries](#backbones-and-libraries)
+- [Results](#results)
+  - [Ranking](#ranking)
+  - [Models' details](#models-details)
+- [Visualization](#visualization)
+  - [Compare 2D slices](#compare-2d-slices)
+    - [2D: kidney_3 sparse ground truth Vs model V47](#2d-kidney_3-sparse-ground-truth-vs-model-v47)
+  - [Compare full 3D kidney predictions](#compare-full-3d-kidney-predictions)
+    - [3D: kidney_3 sparse ground truth Vs model V47](#3d-kidney_3-sparse-ground-truth-vs-model-v47)
+## Task and dataset
 
 _"This competition dataset comprises high-resolution 3D images of several kidneys together with 3D segmentation masks_
 _of their vasculature. Your task is to create segmentation masks for the kidney datasets in the test set._
@@ -26,7 +48,7 @@ identify each dataset split configuration.
 
 Full details here: https://www.kaggle.com/competitions/blood-vessel-segmentation/data
 
-#### Data format
+### Data format
 
 For each kidney we have the information at the single 2D slice level composing the 3D volume.
 
@@ -36,7 +58,7 @@ For each kidney we have the information at the single 2D slice level composing t
   - A single CSV file is also available with all the ground truth for all the kidneys and slices
     in RLE format ([rle-encoded segmentation mask](www.kaggle.com/competitions/blood-vessel-segmentation/overview/evaluation)).
     
-#### Training dataset
+### Train dataset
 
 This is the train dataset with ground truth provided for the competition.
 Since it is the only split with ground truth it is necessary to further create
@@ -61,7 +83,7 @@ For each kidney I have added a slice example with the ground truth highlighted i
   _"The remainder of the segmentation masks for kidney_3. Sparsely segmented (about 85%)."_
   ![Slice 363 kidney 3 sparse](docs/3s_2D_0362_orig_gt.png "3s_0362")
 
-#### Hidden test
+### Hidden test
 
 Two kidneys compose the hidden test of the competition, even the images are not available.
 
@@ -89,7 +111,7 @@ the score on the private dataset was lower, in my case the drop was below 0.1, w
 the average of my competitors. I believe the public leaderboard was poisoned by a lot users relying on a very good public notebook,
 but this didn't work on the private test.
 
-#### Evaluation
+### Evaluation
 
 _"We evaluate submissions using the surface dice metric with a tolerance of 0.0._
 
@@ -99,7 +121,7 @@ The surface dice metric is computed at the 3D level.
 
 The submission format is a CSV file with RLE encoded slices predictions.
 
-#### Comment
+### Comment
 
 I didn't exploit the information about the physical um resolution of the scans.
 
