@@ -170,8 +170,8 @@ Not tried, although looking at the competition results it seems not necessary to
 
 ### Backbones and libraries
 
-- Custom Unet implementation following "Fundus Images using Modified U-net Convolutional Neural Network" (Afolabi, 2020)
-- Unet based on ResNet50 from the "segmentation_models_pytorch" library.
+- From scratch Unet implementation following "Fundus Images using Modified U-net Convolutional Neural Network" (Afolabi, 2020)
+- Unet based on ResNet50 from the "segmentation_models_pytorch" library (`se_resnext50_32x4d`).
 
 The most relevant experiments were made with and smp_encoder = resnext50_32x4d and imagenet weights.
 If not explicitly mentioned, these are the used configurations.
@@ -231,44 +231,48 @@ on the test dataset. This behavior was not corrected even when forcing determini
   This makes sense to reduce the false negatives which is the main issue of my models, I called this `5+max`.
   Interestingly the results get worse by adding the full image into the calculation, it adds too many false positives. I called this `5+fullmax`.
   I can't really explain this, because the model is trained with both zoomed and not zoomed images, in some cases only not zoomed images.
-- I have used a **Unet implementation from the `segmentation_pytorch_models` library with ResNet 50 encoder**.
+- I have used a **Unet implementation from the `segmentation_pytorch_models` library with ResNet 50 encoder (`se_resnext50_32x4d`)**.
   I noticed this model heavily used by the other competitors, and I decided to switch to it to reduce
   the reasons of low performances I had at the beginning. It is possible that applying all the tunings 
-  I implemented later my Unet implementation from scratch could work decently well, but I didn't try further.
-  However the `segmentation_pytorch_models` provides very good baseline models, I didn't explore different pretrained
+  I implemented later, even my Unet implementation from scratch could work decently well, but I didn't try further.
+  However the `segmentation_pytorch_models` provides very good baseline models, I didn't even explore all the bigger available pretrained
   models and Unet implementations present in the library, because I preferred to focus on the training and test pipelines first.
-- **Augmentation is another crucial aspect to get good results**. After some experiments from scratch, to reduce
-  the reasons of low performances I had at the beginning I decided to use an augmentation strategy publicly available in a Kaggle notebook.
+- **Augmentation is another crucial aspect to get good results**. After some experiments totally from scratch based on gut feeling, 
+  I decided to use an **augmentation strategy publicly available in a Kaggle notebook**
+  to reduce the reasons of low performances I had at the beginning .
   I called that `2.5d_aug` because the implemented approach was a 2.5d one, and you can find the details in `data/transforms.py`.
   This helped me to improve my original results, but my test script was not tuned for that training augmentation,
   since I used my own inference strategy instead of the author's one.
   **I got the best results with `my_aug_v2b`**, interestingly **it doesn't apply any zoom during the training**, 
-  but it works better than the others also when **I use tta with zoomed crops only instead of full image like the training**.
-  As already explained in the tta point, actually adding the full image hurts the performances. 
-  This should be better investigated.
+  but it works better than the others also when **I use tta with zoomed crops only, instead of full image like the training**.
+  As already explained in the tta point, actually **analyzing the full image hurts the performances**. 
+  This should be better investigated visualizing the errors introduced by exploiting the full image.
 - I have experimented with **different losses**: BCE, **dice loss and focal loss**.
-  The last two gives me the best results, practically they are very similar, **I can't call a real winner**.
-  It is interesting that the behavior of the model is different. **When trained with dice loss, the model suffer 
+  We need to consider that the binary classes (vessels/no vessels) are unbalanced, positive pixels are a minority,
+  this is probably why my first experiments with BCE loss failed, basically that models tend to predict always 0.
+  It is possible that with the other tunings implemented BCE could work as well, but I didn't try it.
+  The last two gives me the best results, practically they are very similar, **I can't call a real winner**,
+  but it is interesting that the confidence magnitude is different. **When trained with dice loss, the model suffer 
   FNs**, so applying different thresholds to the confidence doesn't solve it. Actually there are no significant
   change from 0.1 to 0.9 threshold on the metric scores, so I decided to use 0.1 as threshold for dice loss models. 
   On the contrary, **with the focal loss the models tend to produce more FPs which can be mitigated with a proper threshold**.
   The metric scores starts to decrease with threshold 0.5 and becomes totally trash with 0.75.
-  I have found 0.4 to be a good value. In any case in the end a model trained with dice loss and 0.1 threshold
-  has the same performances of a model trained with focal loss and 0.4 threshold. There are still FNs that the model
-  is not able to get.
+  I have found 0.4 to be a good value. In the end a model trained with dice loss and 0.1 threshold
+  has the same performances of a model trained with focal loss and 0.4 threshold. **There are still FNs that the model
+  is not able to predict.**
 
 Hardly explainable behaviors:
-- Volatility: I was able to get a reasonable correlation between offline results on `kidney_3_sparse` as test dataset
-  and competition hidden dataset, although some results remain not explainable. Moreover, after the competition it was
+- Volatility: I was able to get a **reasonable correlation between offline results on `kidney_3_sparse` as test dataset
+  and competition hidden dataset**, although some results remain not explainable. Moreover, after the competition close it was
   found that the private test is a lot harder than the public one, we don't have the data at disposal to understand why.
   Take a look to ["Hidden test"](#hidden-test) for some details about the competition shake.
 - The difference between the late submissions V55 and V50 is hardly explainable. The model is the same, the only difference is 
-  the slight difference on the inference resolution (1024x1024 of V50, 768x864 of V55). The strangest thing
-  is that V50 is very bad on local `kidney_3_sparse` w.r.t the other models, but it is the best on the private LB (but not on the public LB).
-  On the other side V55 is lot better on `kidney_3_sparse` but not on the hidden test, although similar.
-- Another even more evident outlier is V53 which is very bad on `kidney_3_sparse`, but competitive on the hidden test.
+  the slight change on the inference resolution (1024x1024 of V50, 768x864 of V55). The strangest thing
+  is that V50 is very bad on local `kidney_3_sparse` w.r.t the other models, but it is the best on the private LB (but not on the public LB, although good).
+  On the other side V55 is lot better on `kidney_3_sparse` but not on the hidden test, although pretty close.
+- An even more evident outlier is V53 which is very bad on `kidney_3_sparse`, but competitive on the hidden test.
   The metrics during the training were very low, some lines artifact are always visible in the prediction, so the local 
-  results are coherent, but it is not explainable why the same model performs so well in the cloud on the test.
+  results are coherent, but it is not explainable why the same model performs so well in the cloud on the hidden test.
   
 
 
@@ -302,11 +306,12 @@ Slice 785/1035 - Dice score 0.80
 ![Slice 785 kidney 3 sparse V47](docs/3s_2D_0784_v47_Vs_gt_dice_score_0.80.png "v47_v3s_0784")
 
 Comment: the model works well with small vessels, but it completely ignores
-the big one on the left. This is more evident with the 3D visualization below.
+the big one on the left (see the first image).
+This is more evident with the 3D visualization below.
 
 ### Compare full 3D kidney predictions
 
-The 3D points clouds are rescaled to 10% for faster processing
+The 3D points clouds are rescaled to 10% for faster processing.
 
 Colors:
 - Green: true positives
@@ -321,6 +326,6 @@ Here we can clearly see where the false negatives are more present.
 
 ![Kidney sparse 3 GT Vs V47](docs/3s_3D_v47_Vs_gt.gif "Kidney sparse 3 GT Vs V47")
 
-You can see the same amount of false negatives in the first 2D slices
+You can see those false negatives in the first 2D slices
 starting from the bottom (lower indexes) already reported in 
 ["2D: kidney_3 sparse ground truth Vs model V47"](#2d-kidney_3-sparse-ground-truth-vs-model-v47).
