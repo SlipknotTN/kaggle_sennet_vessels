@@ -230,9 +230,22 @@ on the test dataset. This behavior was not corrected even when forcing determini
   top-left, top-right, bottom-left, bottom-right and center and get the maximum as the aggregated prediction over the whole image.
   This makes sense to reduce the false negatives which is the main issue of my models, I called this `5+max`.
   Interestingly the results get worse by adding the full image into the calculation, it adds too many false positives. I called this `5+fullmax`.
-  I can't really explain this, because the model is trained with both zoomed and not zoomed images.
-- TODO: Comment about model baseline Resnet 50 and library
-- TODO: Comparison between augmentations. my_aug_v2b was the best in exact comparisons
+  I can't really explain this, because the model is trained with both zoomed and not zoomed images, in some cases only not zoomed images.
+- I have used a **Unet implementation from the `segmentation_pytorch_models` library with ResNet 50 encoder**.
+  I noticed this model heavily used by the other competitors, and I decided to switch to it to reduce
+  the reasons of low performances I had at the beginning. It is possible that applying all the tunings 
+  I implemented later my Unet implementation from scratch could work decently well, but I didn't try further.
+  However the `segmentation_pytorch_models` provides very good baseline models, I didn't explore different pretrained
+  models and Unet implementations present in the library, because I preferred to focus on the training and test pipelines first.
+- **Augmentation is another crucial aspect to get good results**. After some experiments from scratch, to reduce
+  the reasons of low performances I had at the beginning I decided to use an augmentation strategy publicly available in a Kaggle notebook.
+  I called that `2.5d_aug` because the implemented approach was a 2.5d one, and you can find the details in `data/transforms.py`.
+  This helped me to improve my original results, but my test script was not tuned for that training augmentation,
+  since I used my own inference strategy instead of the author's one.
+  **I got the best results with `my_aug_v2b`**, interestingly **it doesn't apply any zoom during the training**, 
+  but it works better than the others also when **I use tta with zoomed crops only instead of full image like the training**.
+  As already explained in the tta point, actually adding the full image hurts the performances. 
+  This should be better investigated.
 - I have experimented with **different losses**: BCE, **dice loss and focal loss**.
   The last two gives me the best results, practically they are very similar, **I can't call a real winner**.
   It is interesting that the behavior of the model is different. **When trained with dice loss, the model suffer 
