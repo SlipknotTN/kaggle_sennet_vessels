@@ -29,6 +29,7 @@ to run the code in a notebook in the Kaggle cloud. However, I have used this rep
 - [Results](#results)
   - [Ranking](#ranking)
   - [Models' details](#models-details)
+  - [What worked and what did not](#what-worked-and-what-did-not)
 - [Visualization](#visualization)
   - [Compare 2D slices](#compare-2d-slices)
     - [2D: kidney_3 sparse ground truth Vs model V47](#2d-kidney_3-sparse-ground-truth-vs-model-v47)
@@ -179,7 +180,7 @@ If not explicitly mentioned, these are the used configurations.
 
 ### Ranking
 
-Private score descending order
+Private score descending order of online submissions
 
 |     Model             |  Val dataset   | Val avg 2D dice score  | Val surface dice score | Public LB  | Private LB |   Notes    |
 |-----------------------|----------------|------------------------|------------------------|------------|------------|------------|
@@ -192,21 +193,6 @@ Private score descending order
 | Submission V41        |      3s        |       0.550            |        0.401           |   0.493    |   0.374    | tta 5+full_max  |
 | (Late) Submission V54 |      3s        |       0.425            |        0.420           |   0.421    |   0.365    | Late submission  |
 | Submission V40        |      3s        |       0.579            |        0.326           |   0.291    |   0.251    | No tta  |
-
-Note: I have run the same trainings offline in my machines, but the results are not identical although practically similar 
-on the test dataset. This behavior was not fixed even when forcing determinism (determinism is working).
-However, the best models offline were the best online as well.
-
-TODO: Talk about bigger training dataset doesn't always improve the performances
-
-TODO: Comment V55 Vs V50
-
-TODO: Why V53 so low? The metrics during the training were very low, some lines artifact are always
-visible in the prediction. Local results are coherent, it is not explainable why the model performs so well in the cloud on the test.
-
-TODO: Comment volatily
-
-TODO: Comment impact of tta on surface dice and tta no full.
 
 ### Models' details
 
@@ -222,9 +208,56 @@ TODO: Comment impact of tta on surface dice and tta no full.
 | (Late) Submission V54 |   1d+1v+2          |      512x512       |       my_aug_v2b   | Focal loss |   1024x1024     |      tta 5+max     |     0.4   |
 | Submission V40        |   1d               |      512x512       |       2.5d_aug     | Dice loss  |   1024x1024     |      No            |     0.1   |
 
-TODO: Comparison between augmentations. my_aug_v2b was the best in exact comparisons
 
-TODO: Explain major improvements like upscaling functions
+### What worked and what did not
+
+Now some notes and comments about **what worked and didn't work**. Please notice that other competitors with
+other approaches could have get different findings. Take a look to the competition discussion forum for the public
+post competition community findings.
+
+- Note on reproducibility: I have run the same trainings offline in my machine, but the results are not identical although practically similar 
+on the test dataset. This behavior was not corrected even when forcing determinism (determinism is proved to work). It is 
+  possible a slight misalignment due to library versions. However, the best models offline were the best online as well.
+- It is proved among all competitors that **using a larger training dataset didn't help**. Using just `kidney_1_dense` as train dataset
+  and `kidney_3_sparse` as validation / test is enough.
+- The **surface metrics** used for the competition **is very sensitive to pixel level predictions**, therefore the selection of 
+  the downscaling and, more importantly, **upscaling function is crucial**. In fact after the model prediction (usually performed
+  at low resolution) it is necessary to upscale the results to the original resolution.
+  I have applied everywhere the "nearest neigbor" (`cv2.INTER_NEAREST`) algorithm, and I obtained a significant boost on the surface dice metric
+  w.r.t. to other algorithms, in particular the default "bilinear interpolation" (`cv2.INTER_LINEAR`).
+  Side note: I have found the same behavior while dealing with multi-stage 2D human pose estimation which requires an upscaling step.  
+- **Another big improvement depends on the test-time-augmentation**. I have found very effective to split the image into 5 parts: 
+  top-left, top-right, bottom-left, bottom-right and center and get the maximum as the aggregated prediction over the whole image.
+  This makes sense to reduce the false negatives which is the main issue of my models, I called this `5+max`.
+  Interestingly the results get worse by adding the full image into the calculation, it adds too many false positives. I called this `5+fullmax`.
+  I can't really explain this, because the model is trained with both zoomed and not zoomed images.
+- TODO: Comment about model baseline Resnet 50 and library
+- TODO: Comparison between augmentations. my_aug_v2b was the best in exact comparisons
+- I have experimented with **different losses**: BCE, **dice loss and focal loss**.
+  The last two gives me the best results, practically they are very similar, **I can't call a real winner**.
+  It is interesting that the behavior of the model is different. **When trained with dice loss, the model suffer 
+  FNs**, so applying different thresholds to the confidence doesn't solve it. Actually there are no significant
+  change from 0.1 to 0.9 threshold on the metric scores, so I decided to use 0.1 as threshold for dice loss models. 
+  On the contrary, **with the focal loss the models tend to produce more FPs which can be mitigated with a proper threshold**.
+  The metric scores starts to decrease with threshold 0.5 and becomes totally trash with 0.75.
+  I have found 0.4 to be a good value. In any case in the end a model trained with dice loss and 0.1 threshold
+  has the same performances of a model trained with focal loss and 0.4 threshold. There are still FNs that the model
+  is not able to get.
+
+Hardly explainable behaviors:
+- Volatility: I was able to get a reasonable correlation between offline results on `kidney_3_sparse` as test dataset
+  and competition hidden dataset, although some results remain not explainable. Moreover, after the competition it was
+  found that the private test is a lot harder than the public one, we don't have the data at disposal to understand why.
+  Take a look to ["Hidden test"](#hidden-test) for some details about the competition shake.
+- The difference between the late submissions V55 and V50 is hardly explainable. The model is the same, the only difference is 
+  the slight difference on the inference resolution (1024x1024 of V50, 768x864 of V55). The strangest thing
+  is that V50 is very bad on local `kidney_3_sparse` w.r.t the other models, but it is the best on the private LB (but not on the public LB).
+  On the other side V55 is lot better on `kidney_3_sparse` but not on the hidden test, although similar.
+- Another even more evident outlier is V53 which is very bad on `kidney_3_sparse`, but competitive on the hidden test.
+  The metrics during the training were very low, some lines artifact are always visible in the prediction, so the local 
+  results are coherent, but it is not explainable why the same model performs so well in the cloud on the test.
+  
+
 
 ## Visualization
 
