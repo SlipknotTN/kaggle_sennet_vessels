@@ -1,8 +1,8 @@
 """
 Visualize 3D shape with 1 or 0 values.
 
-Coordinate system: xyz left hand, z-up.
-Slices (z) going from bottom to up
+Coordinate system: xyz right handed, z-up.
+Slices (z) going from bottom (0) to up (max = num_slices - 1)
 """
 import argparse
 
@@ -36,7 +36,7 @@ def main():
     args = do_parsing()
     print(args)
 
-    print("fLoading volume from {args.input_file}")
+    print(f"Loading volume from {args.input_file}")
     volume_xyz = np.load(args.input_file)
     print(
         f"Loaded 3D shape 2D width x 2D height X num_slices (xyz): {volume_xyz.shape}"
