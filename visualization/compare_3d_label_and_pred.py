@@ -1,3 +1,13 @@
+"""
+Compare labels and predictions 3D point clouds:
+- Load labels and predictions as 3D numpy full resolution points cloud for a single kidney
+- Rescale them to deal with the memory footprint
+- Build a new rescaled point cloud highlighting true positives, false positives and false negatives.
+- [optional] Save the new point cloud as PCD format
+
+Coordinates system: xyz right-handed, z-up.
+Slices (z) going from bottom (0) to up (max = num_slices - 1)
+"""
 import argparse
 
 import numpy as np

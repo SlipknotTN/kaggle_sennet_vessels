@@ -1,7 +1,13 @@
 """
-Visualize 3D shape with 1 or 0 values.
+Visualize 3D point clouds and save them to PCD format:
+- Load full resolution 3D numpy point clouds
+- Rescale it to deal with memory footprint
+- Visualize it
+- [Optional] Save the rescaled version in pcd format.
 
-Coordinate system: xyz right handed, z-up.
+It can be used for both labels and predictions.
+
+Coordinates system: xyz right-handed, z-up.
 Slices (z) going from bottom (0) to up (max = num_slices - 1)
 """
 import argparse
@@ -51,24 +57,26 @@ def main():
     )
     del volume_xyz
 
-    # Ground truth 3D points (1.0 value), set RED RGB color
+    # Set 3D points to 1.0 value and RED RGB color
+    # (the exact value is not considered, this could be import for prediction confidence)
     xyz_coords = np.argwhere(rescaled_volume > 0.0)
     xyz_colors = np.zeros_like(xyz_coords)
     xyz_colors[:, :] = [1.0, 0.0, 0.0]
 
-    # Save point cloud to PCD format, o3d visualizer is faster than matplotlib
     print(f"XYZ npy shape: {xyz_coords.shape}")
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(xyz_coords)
+    pcd.colors = o3d.utility.Vector3dVector(xyz_colors)
+    # To save custom intensity and visualize confidence levels
+    # pcd.point["positions"] = o3d.core.Tensor(xyz)
+    # pcd.point["intensities"] = o3d.core.Tensor(i)
+    o3d.visualization.draw_geometries([pcd])
+
+    # Save point cloud to PCD format, o3d visualizer is faster than matplotlib
     if args.output_pcd_file:
         print(f"Saving PCD file to {args.output_pcd_file}")
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(xyz_coords)
-        pcd.colors = o3d.utility.Vector3dVector(xyz_colors)
         o3d.io.write_point_cloud(args.output_pcd_file, pcd)
         print(f"PCD file save to {args.output_pcd_file}")
-        o3d.visualization.draw_geometries([pcd])
-        # To save custom intensity
-        # pcd.point["positions"] = o3d.core.Tensor(xyz)
-        # pcd.point["intensities"] = o3d.core.Tensor(i)
 
 
 if __name__ == "__main__":
