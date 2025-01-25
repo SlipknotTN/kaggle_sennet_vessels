@@ -19,7 +19,7 @@ from metrics.metrics import init_metrics
 from model import init_model
 from optimizer import init_optimizer
 from utils import get_device, set_seed
-from visualization.image import convert_to_image
+from visualization.image_utils import convert_to_image
 
 
 def add_image_sample_to_tensorboard(

@@ -27,7 +27,7 @@ from metrics.metrics import DiceScore, Metric
 from model import init_model
 from tta import predict_crops_tta_max, predict_no_tta
 from utils import get_device
-from visualization.image import convert_to_image
+from visualization.image_utils import convert_to_image
 
 
 def do_parsing():
