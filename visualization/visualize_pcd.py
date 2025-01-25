@@ -2,6 +2,12 @@
 Visualize a pcd file with open3d library. You can create a pcd with the other visualization scripts
 which start from numpy format.
 
+Using jupyter notebook is not super smooth, although there is a tutorial https://www.open3d.org/html/tutorial/visualization/web_visualizer.html
+I am having this issue setting webrtc server https://github.com/isl-org/Open3D/issues/6631
+
+The exact code of this script is runnable from a jupyter notebook the visualization will be in the standalone visualizer,
+not inside the cells.
+
 Example:
     python visualization/visualize_pcd.py \
     --input_pcd_file ./outputs/submissions/v48/kidney_3_sparse_tta_5max_thresh_0.1_1024/3d/kidney_3_sparse_pred_vs_label_rescaled_0.1_xyz.pcd
