@@ -22,7 +22,8 @@ from config import ConfigParams
 from data.dataset import BloodVesselDatasetTest
 from data.rle import rle_encode
 from data.transforms import get_test_transform
-from metrics.fast_surface_dice.fast_surface_dice import compute_surface_dice_score
+from metrics.fast_surface_dice.fast_surface_dice import \
+    compute_surface_dice_score
 from metrics.metrics import DiceScore, Metric
 from model import init_model
 from tta import predict_crops_tta_max, predict_no_tta
