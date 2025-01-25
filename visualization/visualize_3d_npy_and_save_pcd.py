@@ -11,8 +11,10 @@ Coordinates system: xyz right-handed, z-up.
 Slices (z) going from bottom (0) to up (max = num_slices - 1)
 
 Example:
-    python visualization/visualized_3d_npy_as_pcd.py \
-
+    python visualization/visualize_3d_npy_and_save_pcd.py \
+    --input_file ./outputs/submissions/v48/kidney_3_sparse_tta_5max_thresh_0.1_1024/3d/kidney_3_sparse_prediction_xyz.npy \
+    --output_pcd_file ./outputs/submissions/v48/kidney_3_sparse_tta_5max_thresh_0.1_1024/3d/kidney_3_sparse_prediction_rescaled_0.1_xyz.pcd \
+    --rescale_factor 0.1
 """
 import argparse
 
@@ -52,7 +54,7 @@ def main():
         f"Loaded 3D shape 2D width x 2D height X num_slices (xyz): {volume_xyz.shape}"
     )
 
-    print("Rescaling volume")
+    print("Rescaling numpy volume")
     rescaled_volume = zoom(
         volume_xyz, (args.rescale_factor, args.rescale_factor, args.rescale_factor)
     )

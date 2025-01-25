@@ -10,10 +10,11 @@ Coordinates system: xyz right-handed, z-up.
 Slices (z) going from bottom (0) to up (max = num_slices - 1)
 
 Example:
-    python visualization/compare_3d_npy_as_pcd.py \
+    python visualization/compare_3d_npy_and_save_pcd.py \
     --reference_file /media/michele/DATA-2/Datasets/kaggle_vessels/3D/train/kidney_3_sparse/kidney_3_sparse_label_xyz.npy \
     --compare_file ./outputs/submissions/v48/kidney_3_sparse_tta_5max_thresh_0.1_1024/3d/kidney_3_sparse_prediction_xyz.npy \
-    --rescale_factor 0.1
+    --rescale_factor 0.1 \
+    --output_pcd_file ./outputs/submissions/v48/kidney_3_sparse_tta_5max_thresh_0.1_1024/3d/kidney_3_sparse_pred_vs_label_rescaled_0.1_xyz.pcd
 """
 import argparse
 
@@ -107,6 +108,7 @@ def main():
     # Save point cloud to PCD format, o3d visualizer is way faster than matplotlib
     print(f"XYZ npy shape (valid points): {xyz_coords.shape}")
     pcd = o3d.geometry.PointCloud()
+    # Set the colors for the points
     pcd.points = o3d.utility.Vector3dVector(xyz_coords)
     pcd.colors = o3d.utility.Vector3dVector(xyz_colors)
     o3d.visualization.draw_geometries([pcd])
