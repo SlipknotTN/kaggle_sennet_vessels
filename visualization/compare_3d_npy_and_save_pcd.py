@@ -26,7 +26,7 @@ from scipy.ndimage import zoom
 def do_parsing():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        description="Compare two 3D point clouds using one as reference for the other",
+        description="Compare two 3D numpy point clouds using one as reference for the other",
     )
     parser.add_argument(
         "--reference_file",
