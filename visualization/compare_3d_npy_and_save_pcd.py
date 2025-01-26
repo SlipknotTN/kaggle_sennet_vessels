@@ -14,7 +14,7 @@ Example:
     --reference_file /media/michele/DATA-2/Datasets/kaggle_vessels/3D/train/kidney_3_sparse/kidney_3_sparse_label_xyz.npy \
     --compare_file ./outputs/submissions/v48/kidney_3_sparse_tta_5max_thresh_0.1_1024/3d/kidney_3_sparse_prediction_xyz.npy \
     --rescale_factor 0.1 \
-    --output_pcd_file ./outputs/submissions/v48/kidney_3_sparse_tta_5max_thresh_0.1_1024/3d/kidney_3_sparse_pred_vs_label_rescaled_0.1_xyz.pcd
+    --output_pcd_file ./outputs/submissions/v48/kidney_3_sparse_tta_5max_thresh_0.1_1024/3d/kidney_3_sparse_label_vs_pred_rescaled_0.1_xyz.pcd
 """
 import argparse
 
@@ -42,12 +42,19 @@ def do_parsing():
     )
     parser.add_argument(
         "--rescale_factor",
-        required=True,
+        required=False,
+        default=1.0,
         type=float,
         help="Rescale factor to avoid OOM, e.g. 0.1",
     )
     parser.add_argument(
         "--output_pcd_file", required=False, type=str, help="Output pcd filepath"
+    )
+    parser.add_argument(
+        "--device",
+        choices=["cpu", "gpu"],
+        default="gpu",
+        help="Device to load Open3D tensors",
     )
     args = parser.parse_args()
     return args
@@ -57,32 +64,54 @@ def main():
     args = do_parsing()
     print(args)
 
+    assert (
+        0.0 <= args.rescale_factor <= 1.0
+    ), f"Rescale factor must be in [0.0, 1.0] range"
+
+    if args.device == "cpu":
+        device = o3d.core.Device("CPU:0")
+    elif args.device == "gpu":
+        device = o3d.core.Device("CUDA:0")
+    else:
+        raise ValueError(f"Device not supported {args.device}")
+
     print(f"Loading reference volume from {args.reference_file}")
     ref_volume_xyz = np.load(args.reference_file)
     print(
-        f"Loaded reference 3D shape 2D width x 2D height X num_slices (xyz): {ref_volume_xyz.shape}"
+        f"Loaded reference 3D shape width x height X num_slices (xyz): {ref_volume_xyz.shape}"
     )
-    rescaled_ref_volume = zoom(
-        ref_volume_xyz,
-        (args.rescale_factor, args.rescale_factor, args.rescale_factor),
-    )
-    print(
-        f"Rescaled reference 3D shape to 2D width x 2D height X num_slices (xyz): {rescaled_ref_volume.shape}"
-    )
-    del ref_volume_xyz
+    if args.rescale_factor < 1.0:
+        print("Rescaling reference numpy volume")
+        rescaled_ref_volume = zoom(
+            ref_volume_xyz,
+            (args.rescale_factor, args.rescale_factor, args.rescale_factor),
+        )
+        print(
+            f"Rescaled reference 3D shape to width x height X num_slices (xyz): {rescaled_ref_volume.shape}"
+        )
+        # Save memory
+        del ref_volume_xyz
+    else:
+        print("No rescaling")
+        rescaled_ref_volume = ref_volume_xyz
 
     print(f"Loading volume to compare from {args.compare_file}")
     comp_volume_xyz = np.load(args.compare_file)
     print(
-        f"Loaded 3D shape to compare 2D width x 2D height X num_slices (xyz): {comp_volume_xyz.shape}"
+        f"Loaded 3D shape to compare width x height X num_slices (xyz): {comp_volume_xyz.shape}"
     )
-    rescaled_comp_volume = zoom(
-        comp_volume_xyz, (args.rescale_factor, args.rescale_factor, args.rescale_factor)
-    )
-    print(
-        f"Rescaled 3D shape to compare to 2D width x 2D height X num_slices (xyz): {rescaled_comp_volume.shape}"
-    )
-    del comp_volume_xyz
+    if args.rescale_factor < 1.0:
+        print("Rescaling numpy volume to compare")
+        rescaled_comp_volume = zoom(
+            comp_volume_xyz,
+            (args.rescale_factor, args.rescale_factor, args.rescale_factor),
+        )
+        print(
+            f"Rescaled 3D shape to compare to width x height X num_slices (xyz): {rescaled_comp_volume.shape}"
+        )
+        del comp_volume_xyz
+    else:
+        rescaled_comp_volume = comp_volume_xyz
 
     assert rescaled_comp_volume.shape == rescaled_ref_volume.shape
 
@@ -107,14 +136,18 @@ def main():
     xyz_colors = np.concatenate([tp_xyz_colors, fn_xyz_colors, fp_xyz_colors], axis=0)
     # Save point cloud to PCD format, o3d visualizer is way faster than matplotlib
     print(f"XYZ npy shape (valid points): {xyz_coords.shape}")
-    pcd = o3d.geometry.PointCloud()
+    pcd = o3d.t.geometry.PointCloud(device)
     # Set the colors for the points
-    pcd.points = o3d.utility.Vector3dVector(xyz_coords)
-    pcd.colors = o3d.utility.Vector3dVector(xyz_colors)
-    o3d.visualization.draw_geometries([pcd])
+    pcd.point.positions = o3d.core.Tensor(
+        xyz_coords, dtype=o3d.core.int32, device=device
+    )
+    pcd.point.colors = o3d.core.Tensor(
+        xyz_colors, dtype=o3d.core.float32, device=device
+    )
+    o3d.visualization.draw_geometries([pcd.to_legacy()])
     if args.output_pcd_file:
         print(f"Saving PCD file to {args.output_pcd_file}")
-        o3d.io.write_point_cloud(args.output_pcd_file, pcd)
+        o3d.t.io.write_point_cloud(args.output_pcd_file, pcd)
         print(f"PCD file save to {args.output_pcd_file}")
 
 

@@ -4,8 +4,9 @@ import torch
 import torch.nn as nn
 
 from data.rle import rle_decode
-from metrics.surface_distance.lookup_table import \
-    create_table_neighbour_code_to_surface_area
+from metrics.surface_distance.lookup_table import (
+    create_table_neighbour_code_to_surface_area,
+)
 
 torch_ver_major = int(torch.__version__.split(".")[0])
 dtype_index = torch.int32 if torch_ver_major >= 2 else torch.long

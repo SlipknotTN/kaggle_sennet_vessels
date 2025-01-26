@@ -5,8 +5,8 @@ which start from numpy format.
 Using jupyter notebook is not super smooth, although there is a tutorial https://www.open3d.org/html/tutorial/visualization/web_visualizer.html
 I am having this issue setting webrtc server https://github.com/isl-org/Open3D/issues/6631
 
-The exact code of this script is runnable from a jupyter notebook the visualization will be in the standalone visualizer,
-not inside the cells.
+The exact code of this script is runnable from a jupyter notebook but the visualization
+will be in the standalone visualizer, not inside the cells.
 
 Example:
     python visualization/visualize_pcd.py \
@@ -38,8 +38,8 @@ def main():
     print(args)
 
     assert os.path.exists(args.input_pcd_file), f"{args.input_pcd_file} does not exist"
-    pcd = o3d.io.read_point_cloud(args.input_pcd_file)
-    o3d.visualization.draw_geometries([pcd])
+    pcd = o3d.t.io.read_point_cloud(args.input_pcd_file)
+    o3d.visualization.draw_geometries([pcd.to_legacy()])
 
 
 if __name__ == "__main__":
