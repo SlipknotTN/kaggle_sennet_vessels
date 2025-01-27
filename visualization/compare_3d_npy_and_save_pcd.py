@@ -134,7 +134,7 @@ def main():
 
     xyz_coords = np.concatenate([tp_xyz_coords, fn_xyz_coords, fp_xyz_coords], axis=0)
     xyz_colors = np.concatenate([tp_xyz_colors, fn_xyz_colors, fp_xyz_colors], axis=0)
-    # Save point cloud to PCD format, o3d visualizer is way faster than matplotlib
+    # Save point cloud to PCD format
     print(f"XYZ npy shape (valid points): {xyz_coords.shape}")
     pcd = o3d.t.geometry.PointCloud(device)
     # Set the colors for the points

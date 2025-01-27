@@ -89,6 +89,7 @@ def main():
         rescaled_volume = volume_xyz
 
     # Create the point cloud according to the rescaled numpy 3D volume
+    print("Creating the PCD from numpy")
     pcd = o3d.t.geometry.PointCloud(device)
     # Get the coordinates for the valid points (shape is num_points x 3)
     points_coords = np.argwhere(rescaled_volume > 0.0)
@@ -114,7 +115,7 @@ def main():
     # Visualize the pcd: converting to legacy (no Tensor) is necessary
     o3d.visualization.draw_geometries([pcd.to_legacy()])
 
-    # Save point cloud to PCD format, o3d visualizer is faster than matplotlib
+    # Save point cloud to PCD format
     if args.output_pcd_file:
         print(f"Saving PCD file to {args.output_pcd_file}")
         o3d.t.io.write_point_cloud(args.output_pcd_file, pcd)
