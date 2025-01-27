@@ -6,7 +6,7 @@ create a compatible file)
 first volume as reference (typically the ground truth)
 - [Optional] Save the new point cloud as PCD format
 
-This script does not apply any quantization of the original point clouds
+This script does not apply any quantization to the original point clouds
 
 Coordinates system: xyz right-handed, z-up.
 Slices (z) going from bottom (0) to up (max = num_slices - 1)

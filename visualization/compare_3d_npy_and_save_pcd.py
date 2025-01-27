@@ -1,4 +1,6 @@
 """
+DEPRECATED: use compare_3d_pcd_and_save.py which is a lot more efficient and can work with full resolution point clouds
+
 Compare two 3D point clouds initially stored as numpy arrays:
 - Load reference and other volume as 3D numpy full resolution points cloud for a single kidney
 - Rescale them to reduce the memory footprint
